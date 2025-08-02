@@ -21,13 +21,22 @@ const PORT = process.env.PORT || 5001; // Use port from .env or default to 5001
 // Enable Cross-Origin Resource Sharing (CORS) to allow our frontend to make requests
 const allowedOrigins = [
   'https://deltuhapprevampledaug2025.vercel.app',
-  'http://localhost:5173' // optional for local testing
+  'http://localhost:5173'
 ];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (e.g., curl or mobile apps)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`CORS BLOCKED for origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
+app.options('*', cors());
 // Enable the Express app to parse JSON formatted request bodies
 app.use(express.json());
 

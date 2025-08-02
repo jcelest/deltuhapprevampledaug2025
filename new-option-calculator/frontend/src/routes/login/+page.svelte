@@ -8,7 +8,7 @@
   let error = '';
   let isLoading = false;
 
-  const API_URL = 'http://localhost:5001';
+  const API_URL = import.meta.env.VITE_BACKEND_URL;
 
   async function handleSubmit() {
     if (!email || !password) {

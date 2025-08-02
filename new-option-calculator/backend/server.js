@@ -19,7 +19,15 @@ const PORT = process.env.PORT || 5001; // Use port from .env or default to 5001
 // --- MIDDLEWARE ---
 
 // Enable Cross-Origin Resource Sharing (CORS) to allow our frontend to make requests
-app.use(cors());
+const allowedOrigins = [
+  'https://deltuhapprevampledaug2025.vercel.app',
+  'http://localhost:5173' // optional for local testing
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 // Enable the Express app to parse JSON formatted request bodies
 app.use(express.json());
 

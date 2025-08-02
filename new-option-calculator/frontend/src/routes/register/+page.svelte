@@ -9,7 +9,7 @@
   let error = '';
   let isLoading = false;
 
- const API_URL = import.meta.env.VITE_BACKEND_URL;
+ const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
   async function handleSubmit() {
     if (!email || !password || !confirmPassword) {

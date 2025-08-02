@@ -46,7 +46,7 @@
   let entryPriceHeatmapMax = 0;
 
   // The URL of our backend server
-  const API_URL = import.meta.env.VITE_BACKEND_URL;
+ const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
   // --- Functions ---
 

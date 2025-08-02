@@ -36,7 +36,6 @@ app.use(cors({
   },
   credentials: true
 }));
-app.options('*', cors());
 // Enable the Express app to parse JSON formatted request bodies
 app.use(express.json());
 

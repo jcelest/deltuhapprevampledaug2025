@@ -32,7 +32,7 @@
       authToken.set(response.data.token);
       
       // Redirect to the dashboard
-      goto('/terminal');
+      goto('/dashboard');
 
     } catch (err) {
       error = err.response?.data?.msg || 'An error occurred during registration.';

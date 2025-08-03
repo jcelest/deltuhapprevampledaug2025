@@ -4,77 +4,78 @@
 </script>
 
 <!-- 
-  This is the main container for the homepage. 
-  The 'overflow-hidden' class has been removed to prevent the animated background from being clipped.
+  FIX: The overflow classes are now applied directly to this container.
+  - 'overflow-x-hidden' is the default, which fixes the zooming issue on mobile.
+  - 'lg:overflow-x-visible' removes this restriction on large screens (desktops),
+    which prevents the gradient from clipping and removes the unwanted scrollbar.
 -->
-<div class="relative">
-  
-  <!-- 
-    This div creates the animated, glowing "aurora" background effect.
-    It's positioned absolutely to sit behind the main content.
-  -->
-  <div aria-hidden="true" class="absolute inset-0 z-0">
-    <div class="aurora-bg"></div>
-  </div>
+<div class="relative overflow-x-hidden lg:overflow-x-visible">
+    
+    <!-- 
+      This div creates the animated, glowing "aurora" background effect.
+    -->
+    <div aria-hidden="true" class="absolute inset-0 z-0">
+      <div class="aurora-bg"></div>
+    </div>
 
-  <!-- 
-    This is the main content container, positioned above the background with a relative z-index.
-    It centers the content both vertically and horizontally.
-  -->
-  <div class="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-64px)] text-center py-20 sm:py-32 px-4">
-    <div class="max-w-4xl">
-      <!-- Logo Placeholder -->
-      <div class="mb-8 animate-fade-in-down">
-        <!-- Replaced placeholder SVG with your logo -->
-        <img src="/deltuh logo.svg" alt="Deltuh Logo" class="mx-auto h-20 w-auto">
-      </div>
+    <!-- 
+      This is the main content container, positioned above the background with a relative z-index.
+      It centers the content both vertically and horizontally.
+    -->
+    <div class="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-64px)] text-center py-20 sm:py-32 px-4">
+      <div class="max-w-4xl">
+        <!-- Logo Placeholder -->
+        <div class="mb-8 animate-fade-in-down">
+          <!-- Replaced placeholder SVG with your logo -->
+          <img src="/deltuh logo.svg" alt="Deltuh Logo" class="mx-auto h-20 w-auto">
+        </div>
 
-      <!-- Main heading with a fade-in animation -->
-      <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-white animate-fade-in-down">
-        The Future of Option Pricing is
-        <span class="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 mt-2">
-          Here.
-        </span>
-      </h1>
-      <!-- Subheading with a delayed fade-in animation -->
-      <p class="mt-8 max-w-3xl mx-auto text-xl text-gray-300 animate-fade-in-up">
-        Leverage our real-time analytics terminal to gain an edge in the market. Accurate, fast, and built for serious traders.
-      </p>
-      <!-- Call-to-action buttons with a delayed fade-in animation -->
-      <div class="mt-12 flex flex-col sm:flex-row justify-center items-center gap-6 animate-fade-in-up">
-        <!-- Use an #if block to show different buttons based on login state -->
-        {#if $authToken}
-          <!-- This button shows if the user IS logged in -->
-          <a
-            href="/dashboard"
-            class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-10 rounded-xl text-lg transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg shadow-indigo-500/20"
-          >
-            Go to Dashboard
-          </a>
-        {:else}
-          <!-- These buttons show if the user IS NOT logged in -->
-          <a
-            href="/register"
-            class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-10 rounded-xl text-lg transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg shadow-indigo-500/20"
-          >
-            Get Started
-          </a>
-          <a
-            href="/login"
-            class="w-full sm:w-auto bg-gray-800/50 border border-gray-700 hover:bg-gray-700/80 text-white font-bold py-4 px-10 rounded-xl text-lg transition-all duration-300 ease-in-out"
-          >
-            Sign In
-          </a>
-        {/if}
+        <!-- Main heading with a fade-in animation -->
+        <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-white animate-fade-in-down">
+          The Future of Option Pricing is
+          <span class="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 mt-2">
+            Here.
+          </span>
+        </h1>
+        <!-- Subheading with a delayed fade-in animation -->
+        <p class="mt-8 max-w-3xl mx-auto text-xl text-gray-300 animate-fade-in-up">
+          Leverage our real-time analytics terminal to gain an edge in the market. Accurate, fast, and built for serious traders.
+        </p>
+        <!-- Call-to-action buttons with a delayed fade-in animation -->
+        <div class="mt-12 flex flex-col sm:flex-row justify-center items-center gap-6 animate-fade-in-up">
+          <!-- Use an #if block to show different buttons based on login state -->
+          {#if $authToken}
+            <!-- This button shows if the user IS logged in -->
+            <a
+              href="/dashboard"
+              class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-10 rounded-xl text-lg transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg shadow-indigo-500/20"
+            >
+              Go to Dashboard
+            </a>
+          {:else}
+            <!-- These buttons show if the user IS NOT logged in -->
+            <a
+              href="/register"
+              class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-10 rounded-xl text-lg transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg shadow-indigo-500/20"
+            >
+              Get Started
+            </a>
+            <a
+              href="/login"
+              class="w-full sm:w-auto bg-gray-800/50 border border-gray-700 hover:bg-gray-700/80 text-white font-bold py-4 px-10 rounded-xl text-lg transition-all duration-300 ease-in-out"
+            >
+              Sign In
+            </a>
+          {/if}
+        </div>
       </div>
     </div>
-  </div>
 </div>
 
 <style>
   /* FIX: This global style ensures the root HTML element has a dark background,
-    preventing any white space from showing at the bottom of the page.
-  */
+     preventing any white space from showing at the bottom of the page.
+   */
   :global(html) {
     background-color: #111827; /* Corresponds to Tailwind's bg-gray-900 */
   }

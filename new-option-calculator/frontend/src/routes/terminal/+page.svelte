@@ -213,6 +213,9 @@
 
   // --- Reactive Statements ---
 
+  // This reactive statement automatically formats the ticker input.
+  $: ticker = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
+
   // This single reactive block now handles all heatmap calculations
   // and is correctly triggered by changes to any of its dependencies.
   $: {
@@ -262,7 +265,7 @@
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Ticker</span>
-        <input on:input={clearResults} bind:value={ticker} type="text" placeholder="e.g., AAPL" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+        <input on:input={clearResults} bind:value={ticker} type="text" placeholder="e.g., AAPL" class="uppercase bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
       </label>
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Strike Price</span>

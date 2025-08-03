@@ -28,24 +28,24 @@
       </a>
       
       <!-- Navigation Links Section -->
-      <div class="flex items-center space-x-6">
+      <div class="flex items-center space-x-2 sm:space-x-6">
         <!-- Use an #if block to show different links based on login state -->
         {#if $authToken}
           <!-- This content shows if the user IS logged in -->
-          <a href="/dashboard" class="text-gray-300 hover:text-white transition-colors font-medium">Dashboard</a>
-          <a href="/terminal" class="text-gray-300 hover:text-white transition-colors font-medium">Terminal</a>
+          <a href="/dashboard" class="text-sm sm:text-base text-gray-300 hover:text-white transition-colors font-medium whitespace-nowrap">Dashboard</a>
+          <a href="/terminal" class="text-sm sm:text-base text-gray-300 hover:text-white transition-colors font-medium whitespace-nowrap">Terminal</a>
           <button 
             on:click={handleLogout}
-            class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-md transition-all duration-200 ease-in-out transform hover:scale-105"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-3 sm:px-4 rounded-md transition-all duration-200 ease-in-out transform hover:scale-105 text-sm sm:text-base"
           >
             Logout
           </button>
         {:else}
           <!-- This content shows if the user IS NOT logged in -->
-          <a href="/login" class="text-gray-300 hover:text-white transition-colors font-medium">Login</a>
+          <a href="/login" class="text-sm sm:text-base text-gray-300 hover:text-white transition-colors font-medium">Login</a>
           <a 
             href="/register" 
-            class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-md transition-all duration-200 ease-in-out transform hover:scale-105"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-3 sm:px-4 rounded-md transition-all duration-200 ease-in-out transform hover:scale-105 text-sm sm:text-base"
           >
             Sign Up
           </a>
@@ -60,3 +60,10 @@
     <slot />
   </main>
 </div>
+
+<style global>
+  /* This prevents horizontal scrolling/zooming on mobile */
+  html, body {
+    overflow-x: hidden;
+  }
+</style>

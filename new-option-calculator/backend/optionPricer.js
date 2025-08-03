@@ -17,20 +17,31 @@ const US_HOLIDAYS = [
 ];
 
 /**
- * Checks if a given date is a valid US stock market trading day.
+ * [FIXED] Checks if a given date is a valid US stock market trading day, 
+ * explicitly using the America/New_York timezone.
  * @param {Date} date - The date to check.
  * @returns {boolean} True if the date is a trading day.
  */
 function isTradingDay(date) {
-    const dayOfWeek = date.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday or Saturday
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        weekday: 'short', // 'Sat'
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+
+    const parts = formatter.formatToParts(date).reduce((acc, part) => {
+        if(part.type !== 'literal') acc[part.type] = part.value;
+        return acc;
+    }, {});
+
+    const weekday = parts.weekday;
+    if (['Sat', 'Sun'].includes(weekday)) {
         return false;
     }
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
-    
+
+    const dateString = `${parts.year}-${parts.month}-${parts.day}`;
     return !US_HOLIDAYS.includes(dateString);
 }
 
@@ -38,57 +49,72 @@ function isTradingDay(date) {
 // --- Market Hours Logic ---
 
 /**
- * Determines the correct timestamp for a calculation based on whether the
- * US stock market is currently open.
+ * [FIXED] Determines the correct timestamp for a calculation based on whether the
+ * US stock market is currently open, explicitly using the America/New_York timezone.
  * @returns {{calculationTime: Date, isMarketOpen: boolean}} An object containing the correct time and market status.
  */
 function getCalculationTime() {
     const now = new Date();
-    // Use Intl.DateTimeFormat to get parts of the date in the US Eastern Timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
+    
+    const etFormatter = new Intl.DateTimeFormat('en-US', {
         timeZone: 'America/New_York',
-        weekday: 'short', // 'Fri'
-        hour: 'numeric',  // '9'
-        minute: 'numeric',// '30'
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        weekday: 'short',
+        hour: 'numeric',
+        minute: 'numeric',
         hour12: false
     });
-    
-    const parts = formatter.formatToParts(now);
-    const day = parts.find(p => p.type === 'weekday').value;
-    const hour = parseInt(parts.find(p => p.type === 'hour').value);
-    const minute = parseInt(parts.find(p => p.type === 'minute').value);
 
-    const isWeekday = !['Sat', 'Sun'].includes(day);
-    const timeInMinutes = hour * 60 + minute;
-    const marketOpen = 9 * 60 + 30; // 9:30 AM ET
-    const marketClose = 16 * 60;    // 4:00 PM ET
+    const parts = etFormatter.formatToParts(now).reduce((acc, part) => {
+        if (part.type !== 'literal') acc[part.type] = part.value;
+        return acc;
+    }, {});
 
-    // Check if market is currently open
-    if (isWeekday && timeInMinutes >= marketOpen && timeInMinutes < marketClose) {
+    const etHour = parseInt(parts.hour);
+    const etMinute = parseInt(parts.minute);
+
+    const timeInMinutes = etHour * 60 + etMinute;
+    const marketOpen = 9 * 60 + 30;
+    const marketClose = 16 * 60;
+
+    // Check if market is currently open using the new timezone-aware isTradingDay function
+    if (isTradingDay(now) && timeInMinutes >= marketOpen && timeInMinutes < marketClose) {
         return { calculationTime: now, isMarketOpen: true };
     }
 
-    // --- Market is closed, so we calculate the last market close time ---
-    // Start with a date object localized to New York
-    let lastClose = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
-    
-    // Set the time to 4:00 PM
-    lastClose.setHours(16, 0, 0, 0);
+    // Market is closed. Determine the last closing date.
+    let lastCloseDate = new Date(now);
 
-    if (day === 'Sun') {
-        // If it's Sunday, last close was 2 days ago (Friday)
-        lastClose.setDate(lastClose.getDate() - 2);
-    } else if (day === 'Sat') {
-        // If it's Saturday, last close was 1 day ago (Friday)
-        lastClose.setDate(lastClose.getDate() - 1);
-    } else if (timeInMinutes < marketOpen) { 
-        // If it's a weekday but before market open
-        // If it's Monday morning, last close was 3 days ago (Friday)
-        lastClose.setDate(lastClose.getDate() - (day === 'Mon' ? 3 : 1));
+    // If it's before market open on a trading day, the last close was the previous day.
+    if (isTradingDay(now) && timeInMinutes < marketOpen) {
+        lastCloseDate.setDate(lastCloseDate.getDate() - 1);
     }
-    // If it's a weekday after market close, the date is correct, and the time is already set to 4 PM.
 
-    return { calculationTime: lastClose, isMarketOpen: false };
+    // Keep rewinding until we find a valid trading day
+    while (!isTradingDay(lastCloseDate)) {
+         lastCloseDate.setDate(lastCloseDate.getDate() - 1);
+    }
+    
+    // Now we have the correct date. We need to represent 4 PM ET on this date.
+    const closeDateParts = etFormatter.formatToParts(lastCloseDate).reduce((acc, part) => {
+        if (part.type !== 'literal') acc[part.type] = part.value;
+        return acc;
+    }, {});
+
+    const finalYear = parseInt(closeDateParts.year);
+    const finalMonth = String(closeDateParts.month).padStart(2, '0');
+    const finalDay = String(closeDateParts.day).padStart(2, '0');
+
+    // A simple check for DST in the US (March to November)
+    const monthNum = parseInt(finalMonth);
+    const timezoneOffset = (monthNum > 3 && monthNum < 11) ? "-04:00" : "-05:00";
+    
+    const finalIsoString = `${finalYear}-${finalMonth}-${finalDay}T16:00:00.000${timezoneOffset}`;
+    const finalDate = new Date(finalIsoString);
+
+    return { calculationTime: finalDate, isMarketOpen: false };
 }
 
 
@@ -225,7 +251,7 @@ function generateTableData(params) {
   // 2. Generate Stock Price Headers for the table rows using the advanced logic
   const stockPriceHeaders = calculateStockPriceRange(S, K, priceIncrement);
 
-  // 3. UPDATED: This logic is now a direct port of your original 'getDynamicIncrements' function
+  // 3. This logic is now a direct port of your original 'getDynamicIncrements' function
   const timeHeaders = [];
   const incrementsCount = 13; // As used in your original code
   let totalTradingMinutes = 0;

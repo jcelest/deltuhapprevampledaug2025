@@ -46,7 +46,7 @@
   let entryPriceHeatmapMax = 0;
 
   // The URL of our backend server
- const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
   // --- Functions ---
 
@@ -153,13 +153,15 @@
    * Calculates the dynamic style for the heatmap based on price.
    * @param {number} currentPrice The stock price for the current table row.
    * @param {string} premium The premium range string for the current cell.
+   * @param {boolean} analysisMode - The current state of isAnalyzing.
+   * @param {number} priceToAnalyze - The current entryPrice.
    * @returns {string} A CSS style string for the background color.
    */
-  function getHeatmapStyle(currentPrice, premium) {
+  function getHeatmapStyle(currentPrice, premium, analysisMode, priceToAnalyze) {
     // If we are in "Analyze Entry Price" mode and have a valid price
-    if (isAnalyzing && entryPrice > 0) {
+    if (analysisMode && priceToAnalyze > 0) {
         const avgPremium = getAveragePremium(premium);
-        const difference = avgPremium - entryPrice;
+        const difference = avgPremium - priceToAnalyze;
         const intensity = Math.min(Math.abs(difference) / entryPriceHeatmapMax, 1);
         const opacity = 0.1 + intensity * 0.4;
 
@@ -211,7 +213,7 @@
 
   // --- Reactive Statements ---
 
-  // FIXED: This single reactive block now handles all heatmap calculations
+  // This single reactive block now handles all heatmap calculations
   // and is correctly triggered by changes to any of its dependencies.
   $: {
     if (calculationResults) {
@@ -255,10 +257,8 @@
     <p class="text-xl text-gray-400 mt-4">Real-time analytics and price modeling.</p>
   </div>
   
-  <!-- Main controls card -->
   <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 space-y-8">
     
-    <!-- Top input group for searching -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Ticker</span>
@@ -279,7 +279,6 @@
 
     <hr class="border-gray-700">
 
-    <!-- Bottom input group for generating -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
         <label class="flex flex-col space-y-2">
             <span class="font-semibold text-gray-400">Current Stock Price</span>
@@ -295,18 +294,15 @@
     </div>
   </div>
 
-  <!-- Error message display -->
   {#if error}
     <div class="mt-8 bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center">
         {error}
     </div>
   {/if}
 
-  <!-- Results Section -->
   {#if calculationResults}
     <div class="mt-12 space-y-8" bind:this={resultsSection}>
       
-      <!-- Informational Message -->
       {#if infoMessage}
         <div class="bg-gray-800/60 border border-gray-700 text-gray-300 p-4 rounded-lg text-center text-base flex items-center justify-center gap-3">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
@@ -316,7 +312,6 @@
         </div>
       {/if}
 
-      <!-- Advanced Controls Dropdowns -->
       <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 flex flex-col sm:flex-row items-center justify-center gap-8">
           <label class="flex items-center gap-3">
             <span class="font-semibold text-gray-400 text-lg">Option Type:</span>
@@ -335,13 +330,11 @@
               <option value="10.0">10.00</option>
             </select>
           </label>
-          <!-- Analyze Entry Price Button -->
           <button on:click={() => isAnalyzing = !isAnalyzing} class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition-all text-lg">
             {isAnalyzing ? 'Hide Analyzer' : 'Analyze Entry Price'}
           </button>
       </div>
 
-      <!-- Conditional Entry Price Input -->
       {#if isAnalyzing}
         <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
             <label class="flex flex-col sm:flex-row items-center gap-4">
@@ -351,7 +344,6 @@
         </div>
       {/if}
 
-      <!-- Conditional Price Range Display -->
       <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 text-center">
           {#if optionType === 'call'}
             <h3 class="text-xl font-semibold text-gray-400">Current Call Price</h3>
@@ -362,9 +354,7 @@
           {/if}
       </div>
 
-      <!-- Results Table -->
       <div class="bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden">
-        <!-- Aesthetic Table Header with Centered Logo -->
         <div class="p-4 bg-gray-700/50 border-b border-gray-700 grid grid-cols-3 items-center">
             <h3 class="text-xl font-bold text-white uppercase text-left">{ticker}</h3>
             <img src="/deltuh logo.svg" alt="Deltuh Logo" class="h-10 w-auto justify-self-center">
@@ -397,20 +387,20 @@
                             <td 
                               class="sticky left-0 bg-gray-800 p-4 font-sans font-bold whitespace-nowrap {isStrike ? 'text-green-400' : ''} {isCurrent ? 'text-blue-400' : ''} {(!isStrike && !isCurrent) ? 'text-gray-300' : ''}"
                             >
-                              <div class="flex items-center gap-3">
-                                  <span>${row.stockPrice.toFixed(2)}</span>
-                                  {#if isStrike}
-                                    <span class="text-xs font-semibold px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full">Strike</span>
-                                  {/if}
-                                  {#if isCurrent}
-                                    <span class="text-xs font-semibold px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-full">Current</span>
-                                  {/if}
-                              </div>
+                                <div class="flex items-center gap-3">
+                                    <span>${row.stockPrice.toFixed(2)}</span>
+                                    {#if isStrike}
+                                      <span class="text-xs font-semibold px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full">Strike</span>
+                                    {/if}
+                                    {#if isCurrent}
+                                      <span class="text-xs font-semibold px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-full">Current</span>
+                                    {/if}
+                                </div>
                             </td>
                             {#each row.premiums as premium}
                                 <td 
                                   class="p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
-                                  style={getHeatmapStyle(row.stockPrice, premium)}
+                                  style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
                                 >
                                   {premium}
                                 </td>

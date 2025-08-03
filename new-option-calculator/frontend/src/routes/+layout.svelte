@@ -61,11 +61,4 @@
   </main>
 </div>
 
-<style global>
-  /* This global style is the key to the fix. It tells the browser that the root
-    elements of your site should never have a horizontal scrollbar.
-  */
-  html, body {
-    overflow-x: hidden;
-  }
-</style>
+<!-- The <style global> block has been removed from this file -->

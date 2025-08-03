@@ -4,9 +4,8 @@
 </script>
 
 <!-- 
-  FIX: The conflicting overflow classes have been removed from this container.
-  It will now correctly inherit the 'overflow-x-hidden' behavior from the global
-  stylesheet in the layout file, solving all the layout issues.
+  FIX: All 'overflow' classes have been removed. The layout is now controlled
+  by a media query in the <style> block, which is a more robust solution.
 -->
 <div class="relative">
     
@@ -72,7 +71,7 @@
 </div>
 
 <style>
-  /* FIX: This global style ensures the root HTML element has a dark background,
+  /* This global style ensures the root HTML element has a dark background,
      preventing any white space from showing at the bottom of the page.
    */
   :global(html) {
@@ -91,6 +90,17 @@
                 radial-gradient(ellipse at center, rgba(79, 70, 229, 0.2) 0%, rgba(0,0,0,0) 70%);
     animation: pulse 10s infinite ease-in-out;
     opacity: 0.5;
+  }
+
+  /* FIX: This media query is the final solution. It makes the background gradient
+    smaller on mobile devices, which prevents it from overflowing the screen.
+    This eliminates the need for any 'overflow-x-hidden' classes and their side effects.
+  */
+  @media (max-width: 768px) {
+    .aurora-bg {
+      width: 900px;
+      height: 900px;
+    }
   }
 
   @keyframes pulse {

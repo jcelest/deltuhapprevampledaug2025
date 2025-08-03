@@ -6,7 +6,7 @@ const RISK_FREE_RATES = [-0.0062, -0.0030, 0.0000, 0.10, 0.30];
 // A list of US stock market holidays (YYYY-MM-DD format).
 const US_HOLIDAYS = [
     // 2024
-    "2024-01-01", "2024-01-15", "2024-02-19", "2024-03-29", "2024-05-27", 
+    "2024-01-01", "2024-01-15", "2024-02-19", "2024-03-29", "2024-05-27",
     "2024-06-19", "2024-07-04", "2024-09-02", "2024-11-28", "2024-12-25",
     // 2025
     "2025-01-01", "2025-01-20", "2025-02-17", "2025-04-18", "2025-05-26",
@@ -72,7 +72,7 @@ function getCalculationTime() {
         return acc;
     }, {});
 
-    const etHour = parseInt(parts.hour);
+    const etHour = parseInt(parts.hour === '24' ? '0' : parts.hour);
     const etMinute = parseInt(parts.minute);
 
     const timeInMinutes = etHour * 60 + etMinute;
@@ -109,7 +109,7 @@ function getCalculationTime() {
 
     // A simple check for DST in the US (March to November)
     const monthNum = parseInt(finalMonth);
-    const timezoneOffset = (monthNum > 3 && monthNum < 11) ? "-04:00" : "-05:00";
+    const timezoneOffset = (monthNum >= 3 && monthNum < 11) ? "-04:00" : "-05:00";
     
     const finalIsoString = `${finalYear}-${finalMonth}-${finalDay}T16:00:00.000${timezoneOffset}`;
     const finalDate = new Date(finalIsoString);
@@ -251,20 +251,21 @@ function generateTableData(params) {
   // 2. Generate Stock Price Headers for the table rows using the advanced logic
   const stockPriceHeaders = calculateStockPriceRange(S, K, priceIncrement);
 
-  // 3. This logic is now a direct port of your original 'getDynamicIncrements' function
+  // 3. [FIXED] This logic now correctly calculates time increments within market hours.
   const timeHeaders = [];
-  const incrementsCount = 13; // As used in your original code
+  const incrementsCount = 13;
+  
   let totalTradingMinutes = 0;
   let tempDate = new Date(currentDateTime);
-
-  // Correctly calculate total trading minutes from the start time to expiration
-  while(tempDate < expirationDateTime) {
-      if(isTradingDay(tempDate)) {
+  
+  // Calculate total trading minutes accurately
+  while (tempDate < expirationDateTime) {
+      if (isTradingDay(tempDate)) {
           const startOfDay = new Date(tempDate);
-          startOfDay.setHours(9, 30, 0, 0);
+          startOfDay.setUTCHours(13, 30, 0, 0); // 9:30 AM ET in UTC (approx)
           const endOfDay = new Date(tempDate);
-          endOfDay.setHours(16, 0, 0, 0);
-          
+          endOfDay.setUTCHours(20, 0, 0, 0); // 4:00 PM ET in UTC (approx)
+
           if (tempDate < endOfDay) {
               const startCalc = tempDate < startOfDay ? startOfDay : tempDate;
               const endCalc = expirationDateTime < endOfDay ? expirationDateTime : endOfDay;
@@ -273,36 +274,43 @@ function generateTableData(params) {
               }
           }
       }
-      tempDate.setDate(tempDate.getDate() + 1);
-      tempDate.setHours(0, 0, 0, 0);
+      tempDate.setUTCDate(tempDate.getUTCDate() + 1);
+      tempDate.setUTCHours(0, 0, 0, 0);
   }
 
   const incrementMinutes = totalTradingMinutes > 0 ? totalTradingMinutes / (incrementsCount - 1) : 0;
-  timeHeaders.push(new Date(currentDateTime));
-
-  for (let i = 1; i < incrementsCount; i++) {
-      let minutesToAdd = incrementMinutes * i;
+  
+  for (let i = 0; i < incrementsCount; i++) {
+      const minutesToAdd = i * incrementMinutes;
       let nextTime = new Date(currentDateTime);
-      
-      let safetyBreak = 1000; // Prevent infinite loops
-      while(minutesToAdd > 0 && safetyBreak > 0) {
-          const hours = nextTime.getHours();
-          const minutes = nextTime.getMinutes();
+      let remainingMinutes = minutesToAdd;
 
-          if (isTradingDay(nextTime) && (hours > 9 || (hours === 9 && minutes >= 30)) && hours < 16) {
-              let minutesLeftInDay = (16 * 60) - (hours * 60 + minutes);
-              let addNow = Math.min(minutesToAdd, minutesLeftInDay);
-              nextTime.setMinutes(nextTime.getMinutes() + addNow);
-              minutesToAdd -= addNow;
+      while (remainingMinutes > 0) {
+          const startOfDay = new Date(nextTime);
+          startOfDay.setUTCHours(13, 30, 0, 0);
+          const endOfDay = new Date(nextTime);
+          endOfDay.setUTCHours(20, 0, 0, 0);
+
+          if (isTradingDay(nextTime) && nextTime >= startOfDay && nextTime < endOfDay) {
+              const minutesLeftInDay = (endOfDay - nextTime) / (1000 * 60);
+              if (remainingMinutes <= minutesLeftInDay) {
+                  nextTime.setUTCMinutes(nextTime.getUTCMinutes() + remainingMinutes);
+                  remainingMinutes = 0;
+              } else {
+                  nextTime = endOfDay;
+                  remainingMinutes -= minutesLeftInDay;
+              }
           } else {
-              nextTime.setDate(nextTime.getDate() + 1);
-              nextTime.setHours(9, 30, 0, 0);
+              nextTime.setUTCDate(nextTime.getUTCDate() + 1);
+              nextTime.setUTCHours(13, 30, 0, 0);
+              if (!isTradingDay(nextTime)) {
+                  // Skip weekends/holidays
+                  continue;
+              }
           }
-          safetyBreak--;
       }
       timeHeaders.push(nextTime);
   }
-  timeHeaders[timeHeaders.length - 1] = new Date(expirationDateTime);
 
 
   // 4. Generate the table rows with premium data based on the selected option type

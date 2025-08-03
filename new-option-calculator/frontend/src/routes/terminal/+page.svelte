@@ -367,12 +367,12 @@
             <table class="min-w-full text-sm sm:text-base text-left">
                 <thead class="bg-gray-700/50">
                     <tr>
-                        <th class="sticky left-0 bg-gray-800 p-4 font-semibold tracking-wider text-white whitespace-nowrap z-10">Stock Price</th>
+                        <th class="sticky left-0 bg-gray-800 p-2 sm:p-4 font-semibold tracking-wider text-white whitespace-nowrap z-10">Stock Price</th>
                         {#each calculationResults.tableData.timeHeaders as timeHeader}
-                            <th class="p-4 font-semibold tracking-wider text-white text-center whitespace-nowrap">
+                            <th class="p-2 sm:p-4 font-semibold tracking-wider text-white text-center whitespace-nowrap">
                                 <div class="flex flex-col">
                                     <span class="text-xs text-indigo-400 font-bold">{formatHeaderDay(timeHeader)}</span>
-                                    <span>{new Date(timeHeader).toLocaleDateString()}</span>
+                                    <span class="text-xs sm:text-sm">{new Date(timeHeader).toLocaleDateString()}</span>
                                     <span class="text-xs text-gray-400 font-normal">{formatHeaderTime(timeHeader)}</span>
                                 </div>
                             </th>
@@ -388,10 +388,10 @@
                           title={isStrike ? 'Strike Price' : (isCurrent ? 'Current Stock Price' : '')}
                         >
                             <td 
-                              class="sticky left-0 bg-gray-800 p-4 font-sans font-bold whitespace-nowrap {isStrike ? 'text-green-400' : ''} {isCurrent ? 'text-blue-400' : ''} {(!isStrike && !isCurrent) ? 'text-gray-300' : ''}"
+                              class="sticky left-0 bg-gray-800 p-2 sm:p-4 font-sans font-bold whitespace-nowrap {isStrike ? 'text-green-400' : ''} {isCurrent ? 'text-blue-400' : ''} {(!isStrike && !isCurrent) ? 'text-gray-300' : ''}"
                             >
-                                <div class="flex items-center gap-3">
-                                    <span>${row.stockPrice.toFixed(2)}</span>
+                                <div class="flex items-center gap-2 sm:gap-3">
+                                    <span class="text-sm sm:text-base">${row.stockPrice.toFixed(2)}</span>
                                     {#if isStrike}
                                       <span class="text-xs font-semibold px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full">Strike</span>
                                     {/if}
@@ -402,7 +402,7 @@
                             </td>
                             {#each row.premiums as premium}
                                 <td 
-                                  class="p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
+                                  class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
                                   style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
                                 >
                                   {premium}

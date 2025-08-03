@@ -4,12 +4,11 @@
 </script>
 
 <!-- 
-  FIX: The overflow classes are now applied directly to this container.
-  - 'overflow-x-hidden' is the default, which fixes the zooming issue on mobile.
-  - 'lg:overflow-x-visible' removes this restriction on large screens (desktops),
-    which prevents the gradient from clipping and removes the unwanted scrollbar.
+  FIX: The conflicting overflow classes have been removed from this container.
+  It will now correctly inherit the 'overflow-x-hidden' behavior from the global
+  stylesheet in the layout file, solving all the layout issues.
 -->
-<div class="relative overflow-x-hidden lg:overflow-x-visible">
+<div class="relative">
     
     <!-- 
       This div creates the animated, glowing "aurora" background effect.

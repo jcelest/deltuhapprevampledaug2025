@@ -62,7 +62,9 @@
 </div>
 
 <style global>
-  /* This prevents horizontal scrolling/zooming on mobile */
+  /* This global style is the key to the fix. It tells the browser that the root
+    elements of your site should never have a horizontal scrollbar.
+  */
   html, body {
     overflow-x: hidden;
   }

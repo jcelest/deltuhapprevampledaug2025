@@ -255,27 +255,27 @@
 </script>
 
 <div class="max-w-7xl mx-auto">
-  <div class="text-center mb-10">
-    <h1 class="text-5xl font-extrabold text-white">Option Price Terminal</h1>
-    <p class="text-xl text-gray-400 mt-4">Real-time analytics and price modeling.</p>
+  <div class="text-center mb-8 sm:mb-10">
+    <h1 class="text-4xl sm:text-5xl font-extrabold text-white">Option Price Terminal</h1>
+    <p class="text-lg sm:text-xl text-gray-400 mt-4">Real-time analytics and price modeling.</p>
   </div>
   
-  <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 space-y-8">
+  <div class="bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl border border-gray-700 space-y-8">
     
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Ticker</span>
-        <input on:input={clearResults} bind:value={ticker} type="text" placeholder="e.g., AAPL" class="uppercase bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+        <input on:input={clearResults} bind:value={ticker} type="text" placeholder="e.g., AAPL" class="uppercase bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
       </label>
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Strike Price</span>
-        <input on:input={clearResults} bind:value={strikePrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+        <input on:input={clearResults} bind:value={strikePrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
       </label>
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Expiration Date</span>
-        <input on:input={clearResults} bind:value={expiration} type="date" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+        <input on:input={clearResults} bind:value={expiration} type="date" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
       </label>
-      <button on:click={handleSearch} disabled={isLoading} class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-lg h-[52px] disabled:bg-indigo-800 disabled:cursor-not-allowed">
+      <button on:click={handleSearch} disabled={isLoading} class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-base sm:text-lg h-auto md:h-[52px] disabled:bg-indigo-800 disabled:cursor-not-allowed">
         Search
       </button>
     </div>
@@ -285,13 +285,13 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
         <label class="flex flex-col space-y-2">
             <span class="font-semibold text-gray-400">Current Stock Price</span>
-            <input on:input={clearResults} bind:value={stockPrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+            <input on:input={clearResults} bind:value={stockPrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
         </label>
         <label class="flex flex-col space-y-2">
             <span class="font-semibold text-gray-400">Implied Volatility (%)</span>
-            <input on:input={clearResults} bind:value={impliedVolatility} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+            <input on:input={clearResults} bind:value={impliedVolatility} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
         </label>
-        <button on:click={handleGenerate} disabled={isLoading} class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-lg h-[52px] disabled:bg-green-800 disabled:cursor-not-allowed">
+        <button on:click={handleGenerate} disabled={isLoading} class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-base sm:text-lg h-auto md:h-[52px] disabled:bg-green-800 disabled:cursor-not-allowed">
             {isLoading ? 'Calculating...' : 'Generate Option'}
         </button>
     </div>
@@ -315,17 +315,17 @@
         </div>
       {/if}
 
-      <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 flex flex-col sm:flex-row items-center justify-center gap-8">
+      <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
           <label class="flex items-center gap-3">
-            <span class="font-semibold text-gray-400 text-lg">Option Type:</span>
-            <select bind:value={optionType} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+            <span class="font-semibold text-gray-400 text-base sm:text-lg">Option Type:</span>
+            <select bind:value={optionType} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
               <option value="call">Calls</option>
               <option value="put">Puts</option>
             </select>
           </label>
           <label class="flex items-center gap-3">
-            <span class="font-semibold text-gray-400 text-lg">Price Increments:</span>
-            <select bind:value={priceIncrement} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+            <span class="font-semibold text-gray-400 text-base sm:text-lg">Price Increments:</span>
+            <select bind:value={priceIncrement} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
               <option value="0.5">0.50</option>
               <option value="1.0">1.00</option>
               <option value="2.5">2.50</option>
@@ -333,7 +333,7 @@
               <option value="10.0">10.00</option>
             </select>
           </label>
-          <button on:click={() => isAnalyzing = !isAnalyzing} class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition-all text-lg">
+          <button on:click={() => isAnalyzing = !isAnalyzing} class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition-all text-base sm:text-lg">
             {isAnalyzing ? 'Hide Analyzer' : 'Analyze Entry Price'}
           </button>
       </div>
@@ -341,30 +341,30 @@
       {#if isAnalyzing}
         <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
             <label class="flex flex-col sm:flex-row items-center gap-4">
-                <span class="font-semibold text-gray-400 text-lg">Your Entry Price:</span>
-                <input bind:value={entryPrice} type="number" placeholder="e.g., 12.50" class="flex-grow bg-gray-900 border border-gray-600 rounded-lg p-3 text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                <span class="font-semibold text-gray-400 text-base sm:text-lg">Your Entry Price:</span>
+                <input bind:value={entryPrice} type="number" placeholder="e.g., 12.50" class="flex-grow bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
             </label>
         </div>
       {/if}
 
       <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 text-center">
           {#if optionType === 'call'}
-            <h3 class="text-xl font-semibold text-gray-400">Current Call Price</h3>
-            <p class="text-3xl font-sans text-white mt-2">{calculationResults.callPriceRange}</p>
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-400">Current Call Price</h3>
+            <p class="text-2xl sm:text-3xl font-sans text-white mt-2">{calculationResults.callPriceRange}</p>
           {:else}
-            <h3 class="text-xl font-semibold text-gray-400">Current Put Price</h3>
-            <p class="text-3xl font-sans text-white mt-2">{calculationResults.putPriceRange}</p>
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-400">Current Put Price</h3>
+            <p class="text-2xl sm:text-3xl font-sans text-white mt-2">{calculationResults.putPriceRange}</p>
           {/if}
       </div>
 
       <div class="bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden">
         <div class="p-4 bg-gray-700/50 border-b border-gray-700 grid grid-cols-3 items-center">
-            <h3 class="text-xl font-bold text-white uppercase text-left">{ticker}</h3>
+            <h3 class="text-lg sm:text-xl font-bold text-white uppercase text-left">{ticker}</h3>
             <img src="/deltuh logo.svg" alt="Deltuh Logo" class="h-10 w-auto justify-self-center">
-            <p class="text-lg font-medium text-gray-300 text-right">Expiration: {expiration}</p>
+            <p class="text-base sm:text-lg font-medium text-gray-300 text-right">Expiration: {expiration}</p>
         </div>
         <div class="overflow-x-auto custom-scrollbar">
-            <table class="min-w-full text-base text-left">
+            <table class="min-w-full text-sm sm:text-base text-left">
                 <thead class="bg-gray-700/50">
                     <tr>
                         <th class="sticky left-0 bg-gray-800 p-4 font-semibold tracking-wider text-white whitespace-nowrap z-10">Stock Price</th>

@@ -92,14 +92,16 @@
     opacity: 0.5;
   }
 
-  /* FIX: This media query is the final solution. It makes the background gradient
-    smaller on mobile devices, which prevents it from overflowing the screen.
-    This eliminates the need for any 'overflow-x-hidden' classes and their side effects.
+  /*
+    This media query makes the background gradient smaller on mobile devices,
+    which prevents it from overflowing the screen.
   */
   @media (max-width: 768px) {
     .aurora-bg {
       width: 400px;
       height: 400px;
+      top: 40%; /* Move the gradient up on mobile */
+      opacity: 0.7; /* Make the gradient brighter on mobile */
     }
   }
 

@@ -48,7 +48,7 @@
     <form class="space-y-8 sm:space-y-12 bg-gray-800 p-8 sm:p-16 rounded-2xl shadow-2xl border border-gray-700" on:submit|preventDefault={handleSubmit}>
       
       <div class="flex justify-center">
-        <img src="/deltuh1logo.svg" alt="Deltuh Logo" class="h-28 sm:h-40 w-auto" />
+        <img src="/deltuh logo.svg" alt="Deltuh Logo" class="h-24 sm:h-32 w-auto" />
       </div>
 
       <div class="space-y-6 sm:space-y-8 rounded-md">

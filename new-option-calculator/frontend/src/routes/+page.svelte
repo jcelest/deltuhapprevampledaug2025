@@ -98,8 +98,8 @@
   */
   @media (max-width: 768px) {
     .aurora-bg {
-      width: 600px;
-      height: 600px;
+      width: 400px;
+      height: 400px;
     }
   }
 

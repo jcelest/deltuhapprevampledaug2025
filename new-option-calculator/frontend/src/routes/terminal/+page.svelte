@@ -412,14 +412,17 @@
                             {#each row.premiums as premium}
                                 {@const isBreakevenCell = isBreakeven(premium, entryPrice)}
                                 <td 
-                                  class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300 relative"
-                                  class:breakeven-cell={isBreakevenCell}
+                                  class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
                                   style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
                                 >
                                   {#if isBreakevenCell}
-                                    <span class="breakeven-label">Breakeven</span>
+                                    <div class="flex flex-col justify-center leading-tight">
+                                      <span class="breakeven-label">Breakeven</span>
+                                      <span class="breakeven-text">{premium}</span>
+                                    </div>
+                                  {:else}
+                                    <span>{premium}</span>
                                   {/if}
-                                  <span class:breakeven-text={isBreakevenCell}>{premium}</span>
                                 </td>
                             {/each}
                         </tr>
@@ -449,30 +452,24 @@
     background-color: #4338ca; /* bg-indigo-700 */
   }
 
-  /* [NEW] Styles for the breakeven indicator */
-  .breakeven-cell {
-    position: relative;
-  }
+  /* [MODIFIED] Styles for the breakeven indicator */
   .breakeven-label {
-    position: absolute;
-    top: 1px;
-    left: 50%;
-    transform: translateX(-50%);
     font-size: 0.6rem;
     font-weight: bold;
     color: #facc15; /* yellow-400 */
     text-transform: uppercase;
+    line-height: 1; /* Tighter line height for the label */
   }
   .breakeven-text {
     font-weight: bold;
     color: #fde047; /* yellow-300 */
     text-shadow: 0 0 8px rgba(250, 204, 21, 0.5); /* Glowing effect */
+    line-height: 1.2; /* Give it some space from the label */
   }
 
   /* Responsive adjustments for the breakeven label on larger screens */
   @media (min-width: 640px) {
     .breakeven-label {
-      top: 2px;
       font-size: 0.65rem;
     }
   }

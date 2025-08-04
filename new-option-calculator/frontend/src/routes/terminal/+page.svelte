@@ -455,10 +455,10 @@
   }
   .breakeven-label {
     position: absolute;
-    top: 2px;
+    top: 1px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-weight: bold;
     color: #facc15; /* yellow-400 */
     text-transform: uppercase;
@@ -467,5 +467,13 @@
     font-weight: bold;
     color: #fde047; /* yellow-300 */
     text-shadow: 0 0 8px rgba(250, 204, 21, 0.5); /* Glowing effect */
+  }
+
+  /* Responsive adjustments for the breakeven label on larger screens */
+  @media (min-width: 640px) {
+    .breakeven-label {
+      top: 2px;
+      font-size: 0.65rem;
+    }
   }
 </style>

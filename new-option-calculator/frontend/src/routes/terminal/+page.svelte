@@ -148,6 +148,15 @@
       const parts = premiumRange.split('-').map(Number);
       return (parts[0] + parts[1]) / 2;
   }
+  
+  /**
+   * [NEW] Checks if the user's entry price is within the given premium range.
+   */
+  function isBreakeven(premiumRange, priceToAnalyze) {
+      if (!isAnalyzing || !priceToAnalyze) return false;
+      const [min, max] = premiumRange.split('-').map(Number);
+      return priceToAnalyze >= min && priceToAnalyze <= max;
+  }
 
   /**
    * Calculates the dynamic style for the heatmap based on price.
@@ -388,7 +397,7 @@
                           title={isStrike ? 'Strike Price' : (isCurrent ? 'Current Stock Price' : '')}
                         >
                             <td 
-                              class="sticky left-0 bg-gray-800 p-2 sm:p-4 font-sans font-bold whitespace-nowrap {isStrike ? 'text-green-400' : ''} {isCurrent ? 'text-blue-400' : ''} {(!isStrike && !isCurrent) ? 'text-gray-300' : ''}"
+                              class="sticky left-0 bg-gray-800 p-2 sm:p-4 font-sans font-bold whitespace-nowrap z-10 {isStrike ? 'text-green-400' : ''} {isCurrent ? 'text-blue-400' : ''} {(!isStrike && !isCurrent) ? 'text-gray-300' : ''}"
                             >
                                 <div class="flex items-center gap-2 sm:gap-3">
                                     <span class="text-sm sm:text-base">${row.stockPrice.toFixed(2)}</span>
@@ -401,11 +410,16 @@
                                 </div>
                             </td>
                             {#each row.premiums as premium}
+                                {@const isBreakevenCell = isBreakeven(premium, entryPrice)}
                                 <td 
-                                  class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
+                                  class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300 relative"
+                                  class:breakeven-cell={isBreakevenCell}
                                   style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
                                 >
-                                  {premium}
+                                  {#if isBreakevenCell}
+                                    <span class="breakeven-label">Breakeven</span>
+                                  {/if}
+                                  <span class:breakeven-text={isBreakevenCell}>{premium}</span>
                                 </td>
                             {/each}
                         </tr>
@@ -433,5 +447,25 @@
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: #4338ca; /* bg-indigo-700 */
+  }
+
+  /* [NEW] Styles for the breakeven indicator */
+  .breakeven-cell {
+    position: relative;
+  }
+  .breakeven-label {
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: bold;
+    color: #facc15; /* yellow-400 */
+    text-transform: uppercase;
+  }
+  .breakeven-text {
+    font-weight: bold;
+    color: #fde047; /* yellow-300 */
+    text-shadow: 0 0 8px rgba(250, 204, 21, 0.5); /* Glowing effect */
   }
 </style>

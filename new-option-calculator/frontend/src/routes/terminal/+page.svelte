@@ -491,4 +491,4 @@
       font-size: 0.65rem;
     }
   }
-</sty
+</style>

@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { authToken } from '../../stores/authStore.js';
 
-  // [MODIFIED] This function formats a date object to 'YYYY-MM-DD' for the input field.
+  // This function formats a date object to 'YYYY-MM-DD' for the input field.
   function getTodayDateString() {
     const today = new Date();
     const year = today.getFullYear();
@@ -22,7 +22,7 @@
 
   // --- State Variables ---
 
-  // [MODIFIED] Input state now defaults to empty values for a clean slate.
+  // Input state now defaults to empty values for a clean slate.
   let ticker = '';
   let expiration = getTodayDateString(); // Default to today's date
   let strikePrice = '';
@@ -60,7 +60,7 @@
   // --- Functions ---
 
   /**
-   * Clears any existing results and messages. This is called when primary inputs change.
+   * Clears any existing results and messages.
    */
   function clearResults() {
       calculationResults = null;
@@ -71,87 +71,74 @@
   }
 
   /**
-   * Fetches mock market data for the given ticker.
+   * A single function to handle the entire calculation process.
    */
-  async function handleSearch() {
-    if (!ticker) {
-      error = 'Please enter a ticker symbol.';
-      return;
-    }
-    isLoading = true;
-    clearResults();
-    try {
-      const response = await axios.post(`${API_URL}/api/fetch-market-data`, { ticker });
-      stockPrice = response.data.currentStockPrice;
-      impliedVolatility = response.data.impliedVolatility;
-    } catch (err) {
-      error = 'Failed to fetch market data from the server.';
-      console.error(err);
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  /**
-   * Sends input data to the backend to get calculation results.
-   */
-  async function handleGenerate() {
-    if (!stockPrice || !strikePrice || !expiration || !impliedVolatility) {
-        error = 'Please fill in all fields before generating.';
+  async function handleCalculate() {
+    if (!ticker || !strikePrice || !expiration) {
+        error = 'Please fill in Ticker, Strike Price, and Expiration Date.';
         return;
     }
     isLoading = true;
-    // Clear previous results before fetching new ones
-    calculationResults = null;
-    infoMessage = '';
-    error = '';
+    // Don't clear results here, so the old table stays visible during recalculation
     
     try {
+        // Step 1: Fetch market data
+        const marketDataResponse = await axios.post(`${API_URL}/api/fetch-market-data`, { ticker });
+        
+        // Use the fetched data, but allow user overrides if they've typed something in.
+        const finalStockPrice = stockPrice || marketDataResponse.data.currentStockPrice;
+        const finalImpliedVolatility = impliedVolatility || marketDataResponse.data.impliedVolatility;
+
+        // Update the state to show the user the auto-populated values
+        stockPrice = finalStockPrice;
+        impliedVolatility = finalImpliedVolatility;
+
+        // Step 2: Immediately proceed to generate the option table
         const params = {
-            stockPrice,
+            stockPrice: finalStockPrice,
             strikePrice,
             expirationDate: expiration,
-            volatility: impliedVolatility,
-            optionType: optionType,
+            volatility: finalImpliedVolatility,
+            optionType,
             priceIncrement: parseFloat(priceIncrement)
         };
-        const response = await axios.post(`${API_URL}/api/calculate`, params);
-        calculationResults = response.data;
+        const calculationResponse = await axios.post(`${API_URL}/api/calculate`, params);
+        calculationResults = calculationResponse.data;
 
         // This logic correctly processes the backend response to create the info message.
-        const asOfTime = new Date(response.data.calculationTime);
-        if (response.data.isMarketOpen) {
+        const asOfTime = new Date(calculationResponse.data.calculationTime);
+        if (calculationResponse.data.isMarketOpen) {
             infoMessage = `Prices calculated in real-time as of ${asOfTime.toLocaleString()}.`;
         } else {
             infoMessage = `The market is currently closed. Prices are based on the last market close: ${asOfTime.toLocaleString()}.`;
         }
 
         // Auto-scroll to the results section after the DOM has updated
-        await tick(); // Wait for Svelte to render the results
+        await tick();
         if (resultsSection) {
-          const topOffset = resultsSection.getBoundingClientRect().top + window.scrollY - 80; // 80px offset for navbar
+          const topOffset = resultsSection.getBoundingClientRect().top + window.scrollY - 80;
           window.scrollTo({ top: topOffset, behavior: 'smooth' });
         }
 
     } catch (err) {
-        error = 'Failed to calculate option data.';
+        error = 'Failed to calculate option data. Please check the ticker and try again.';
         console.error(err);
     } finally {
         isLoading = false;
     }
   }
-
+  
   /**
-   * A function to re-calculate only if results are already visible.
+   * [NEW] A function to re-calculate only if results are already visible.
    */
   function reCalculate() {
     if (calculationResults) {
-      handleGenerate();
+      handleCalculate();
     }
   }
 
   /**
-   * A helper function to parse the premium range string (e.g., "1.05-1.15") into an average number.
+   * A helper function to parse the premium range string into an average number.
    */
   function getAveragePremium(premiumRange) {
       const parts = premiumRange.split('-').map(Number);
@@ -168,7 +155,7 @@
   }
 
   /**
-   * [NEW] Calculates the percentage change from the entry price.
+   * Calculates the percentage change from the entry price.
    */
   function getPercentageChange(premiumRange, priceToAnalyze) {
       if (!isAnalyzing || !priceToAnalyze) return { text: '', isProfit: false };
@@ -192,8 +179,8 @@
         const intensity = Math.min(Math.abs(difference) / entryPriceHeatmapMax, 1);
         const opacity = 0.1 + intensity * 0.4;
 
-        if (difference > 0) return `background-color: rgba(34, 197, 94, ${opacity});`; // Profit (Green)
-        if (difference < 0) return `background-color: rgba(239, 68, 68, ${opacity});`; // Loss (Red)
+        if (difference > 0) return `background-color: rgba(34, 197, 94, ${opacity});`;
+        if (difference < 0) return `background-color: rgba(239, 68, 68, ${opacity});`;
 
     } else {
         if (!heatmapMaxDifference) return '';
@@ -257,7 +244,7 @@
     }
   }
 
-  $: if (stockPrice) {
+  $: if (stockPrice && !calculationResults) {
       const price = parseFloat(stockPrice);
       if (price >= 1 && price <= 10) priceIncrement = '0.5';
       else if (price >= 11 && price <= 99) priceIncrement = '1.0';
@@ -276,37 +263,57 @@
   
   <div class="bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl border border-gray-700 space-y-8">
     
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+    <!-- Main Inputs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Ticker</span>
-        <input on:input={clearResults} bind:value={ticker} type="text" placeholder="e.g., AAPL" class="uppercase bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+        <input bind:value={ticker} type="text" placeholder="e.g., AAPL" class="uppercase bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
       </label>
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Strike Price</span>
-        <input on:input={clearResults} bind:value={strikePrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="e.g., 540">
+        <input bind:value={strikePrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="e.g., 540">
       </label>
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Expiration Date</span>
-        <input on:input={clearResults} bind:value={expiration} type="date" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+        <input bind:value={expiration} type="date" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
       </label>
-      <button on:click={handleSearch} disabled={isLoading} class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-base sm:text-lg h-auto md:h-[52px] disabled:bg-indigo-800 disabled:cursor-not-allowed">
-        Search
-      </button>
+    </div>
+
+    <!-- Advanced / Auto-populated Inputs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <label class="flex flex-col space-y-2">
+            <span class="font-semibold text-gray-400">Current Stock Price (Optional)</span>
+            <input bind:value={stockPrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Auto-fetched">
+        </label>
+        <label class="flex flex-col space-y-2">
+            <span class="font-semibold text-gray-400">Implied Volatility (Optional)</span>
+            <input bind:value={impliedVolatility} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Auto-fetched">
+        </label>
     </div>
 
     <hr class="border-gray-700">
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+    <!-- Calculation Controls -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
         <label class="flex flex-col space-y-2">
-            <span class="font-semibold text-gray-400">Current Stock Price</span>
-            <input on:input={clearResults} bind:value={stockPrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="e.g., 555.20">
+            <span class="font-semibold text-gray-400">Option Type</span>
+            <select bind:value={optionType} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition h-[52px]">
+              <option value="call">Calls</option>
+              <option value="put">Puts</option>
+            </select>
         </label>
         <label class="flex flex-col space-y-2">
-            <span class="font-semibold text-gray-400">Implied Volatility (%)</span>
-            <input on:input={clearResults} bind:value={impliedVolatility} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="e.g., 25.5">
+            <span class="font-semibold text-gray-400">Price Increments</span>
+            <select bind:value={priceIncrement} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition h-[52px]">
+              <option value="0.5">0.50</option>
+              <option value="1.0">1.00</option>
+              <option value="2.5">2.50</option>
+              <option value="5.0">5.00</option>
+              <option value="10.0">10.00</option>
+            </select>
         </label>
-        <button on:click={handleGenerate} disabled={isLoading} class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-base sm:text-lg h-auto md:h-[52px] disabled:bg-green-800 disabled:cursor-not-allowed">
-            {isLoading ? 'Calculating...' : 'Generate Option'}
+        <button on:click={handleCalculate} disabled={isLoading} class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-base sm:text-lg h-[52px] disabled:bg-indigo-800 disabled:cursor-not-allowed">
+            {isLoading ? 'Calculating...' : 'Calculate'}
         </button>
     </div>
   </div>
@@ -329,25 +336,8 @@
         </div>
       {/if}
 
-      <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-          <label class="flex items-center gap-3">
-            <span class="font-semibold text-gray-400 text-base sm:text-lg">Option Type:</span>
-            <select bind:value={optionType} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-              <option value="call">Calls</option>
-              <option value="put">Puts</option>
-            </select>
-          </label>
-          <label class="flex items-center gap-3">
-            <span class="font-semibold text-gray-400 text-base sm:text-lg">Price Increments:</span>
-            <select bind:value={priceIncrement} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-              <option value="0.5">0.50</option>
-              <option value="1.0">1.00</option>
-              <option value="2.5">2.50</option>
-              <option value="5.0">5.00</option>
-              <option value="10.0">10.00</option>
-            </select>
-          </label>
-          <button on:click={() => isAnalyzing = !isAnalyzing} class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition-all text-base sm:text-lg">
+      <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-center justify-center">
+          <button on:click={() => isAnalyzing = !isAnalyzing} class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-8 rounded-lg transition-all text-base sm:text-lg">
             {isAnalyzing ? 'Hide Analyzer' : 'Analyze Entry Price'}
           </button>
       </div>
@@ -381,7 +371,7 @@
             <table class="min-w-full text-sm sm:text-base text-left">
                 <thead class="bg-gray-700/50">
                     <tr>
-                        <th class="sticky left-0 bg-gray-800 p-2 sm:p-4 font-semibold tracking-wider text-white whitespace-nowrap z-10">Stock Price</th>
+                        <th class="sticky left-0 bg-gray-800 p-2 sm:p-4 font-semibold tracking-wider text-white whitespace-nowrap z-20">Stock Price</th>
                         {#each calculationResults.tableData.timeHeaders as timeHeader}
                             <th class="p-2 sm:p-4 font-semibold tracking-wider text-white text-center whitespace-nowrap">
                                 <div class="flex flex-col">
@@ -501,4 +491,4 @@
       font-size: 0.65rem;
     }
   }
-</style>
+</sty

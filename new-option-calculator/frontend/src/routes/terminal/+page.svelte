@@ -4,6 +4,15 @@
   import { goto } from '$app/navigation';
   import { authToken } from '../../stores/authStore.js';
 
+  // [MODIFIED] This function formats a date object to 'YYYY-MM-DD' for the input field.
+  function getTodayDateString() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   // Protect the route
   onMount(() => {
     if (!$authToken) {
@@ -13,10 +22,10 @@
 
   // --- State Variables ---
 
-  // Input state with default values
-  let ticker = 'SPY';
-  let expiration = '2025-12-19';
-  let strikePrice = 540;
+  // [MODIFIED] Input state now defaults to empty values for a clean slate.
+  let ticker = '';
+  let expiration = getTodayDateString(); // Default to today's date
+  let strikePrice = '';
   
   // Data state that will be fetched from our backend
   let stockPrice = '';
@@ -150,7 +159,7 @@
   }
   
   /**
-   * [NEW] Checks if the user's entry price is within the given premium range.
+   * Checks if the user's entry price is within the given premium range.
    */
   function isBreakeven(premiumRange, priceToAnalyze) {
       if (!isAnalyzing || !priceToAnalyze) return false;
@@ -159,15 +168,24 @@
   }
 
   /**
+   * [NEW] Calculates the percentage change from the entry price.
+   */
+  function getPercentageChange(premiumRange, priceToAnalyze) {
+      if (!isAnalyzing || !priceToAnalyze) return { text: '', isProfit: false };
+      const avgPremium = getAveragePremium(premiumRange);
+      const change = ((avgPremium - priceToAnalyze) / priceToAnalyze) * 100;
+      const isProfit = change >= 0;
+      const sign = isProfit ? '+' : '';
+      return {
+          text: `${sign}${change.toFixed(1)}%`,
+          isProfit,
+      };
+  }
+
+  /**
    * Calculates the dynamic style for the heatmap based on price.
-   * @param {number} currentPrice The stock price for the current table row.
-   * @param {string} premium The premium range string for the current cell.
-   * @param {boolean} analysisMode - The current state of isAnalyzing.
-   * @param {number} priceToAnalyze - The current entryPrice.
-   * @returns {string} A CSS style string for the background color.
    */
   function getHeatmapStyle(currentPrice, premium, analysisMode, priceToAnalyze) {
-    // If we are in "Analyze Entry Price" mode and have a valid price
     if (analysisMode && priceToAnalyze > 0) {
         const avgPremium = getAveragePremium(premium);
         const difference = avgPremium - priceToAnalyze;
@@ -177,9 +195,7 @@
         if (difference > 0) return `background-color: rgba(34, 197, 94, ${opacity});`; // Profit (Green)
         if (difference < 0) return `background-color: rgba(239, 68, 68, ${opacity});`; // Loss (Red)
 
-    } 
-    // Otherwise, use the default "in-the-money" heatmap
-    else {
+    } else {
         if (!heatmapMaxDifference) return '';
         const difference = currentPrice - strikePrice;
         const intensity = Math.min(Math.abs(difference) / heatmapMaxDifference, 1);
@@ -197,9 +213,7 @@
   }
 
   /**
-   * Formats a date object to include the time, rounded to the nearest hour.
-   * @param {string | Date} dateString - The date to format.
-   * @returns {string} The formatted time string.
+   * Formats a date object to include the time.
    */
   function formatHeaderTime(dateString) {
       const date = new Date(dateString);
@@ -211,8 +225,6 @@
 
   /**
    * Formats a date object to get the abbreviated day of the week.
-   * @param {string | Date} dateString - The date to format.
-   * @returns {string} The formatted day string (e.g., "Mon").
    */
   function formatHeaderDay(dateString) {
       const date = new Date(dateString);
@@ -222,19 +234,14 @@
 
   // --- Reactive Statements ---
 
-  // This reactive statement automatically formats the ticker input.
   $: ticker = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
 
-  // This single reactive block now handles all heatmap calculations
-  // and is correctly triggered by changes to any of its dependencies.
   $: {
     if (calculationResults) {
-        // Calculate max difference for the default heatmap
         const prices = calculationResults.tableData.rows.map(row => row.stockPrice);
         const maxDiff = Math.max(...prices.map(p => Math.abs(p - strikePrice)));
         heatmapMaxDifference = maxDiff > 0 ? maxDiff : 1;
 
-        // Calculate max difference for the entry price heatmap if active
         if (isAnalyzing && entryPrice > 0) {
             let maxPremiumDiff = 0;
             calculationResults.tableData.rows.forEach(row => {
@@ -245,13 +252,11 @@
             });
             entryPriceHeatmapMax = maxPremiumDiff > 0 ? maxPremiumDiff : 1;
         } else {
-            // This ensures that if the user clears the input, the heatmap resets.
             entryPriceHeatmapMax = 0;
         }
     }
   }
 
-  // This reactive block automatically sets the price increment based on the stock price.
   $: if (stockPrice) {
       const price = parseFloat(stockPrice);
       if (price >= 1 && price <= 10) priceIncrement = '0.5';
@@ -278,7 +283,7 @@
       </label>
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Strike Price</span>
-        <input on:input={clearResults} bind:value={strikePrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+        <input on:input={clearResults} bind:value={strikePrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="e.g., 540">
       </label>
       <label class="flex flex-col space-y-2">
         <span class="font-semibold text-gray-400">Expiration Date</span>
@@ -294,11 +299,11 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
         <label class="flex flex-col space-y-2">
             <span class="font-semibold text-gray-400">Current Stock Price</span>
-            <input on:input={clearResults} bind:value={stockPrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+            <input on:input={clearResults} bind:value={stockPrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="e.g., 555.20">
         </label>
         <label class="flex flex-col space-y-2">
             <span class="font-semibold text-gray-400">Implied Volatility (%)</span>
-            <input on:input={clearResults} bind:value={impliedVolatility} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+            <input on:input={clearResults} bind:value={impliedVolatility} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="e.g., 25.5">
         </label>
         <button on:click={handleGenerate} disabled={isLoading} class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-base sm:text-lg h-auto md:h-[52px] disabled:bg-green-800 disabled:cursor-not-allowed">
             {isLoading ? 'Calculating...' : 'Generate Option'}
@@ -411,14 +416,21 @@
                             </td>
                             {#each row.premiums as premium}
                                 {@const isBreakevenCell = isBreakeven(premium, entryPrice)}
+                                {@const percentageChange = getPercentageChange(premium, entryPrice)}
                                 <td 
                                   class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
                                   style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
                                 >
-                                  {#if isBreakevenCell}
+                                  {#if isAnalyzing && entryPrice > 0}
                                     <div class="flex flex-col justify-center leading-tight">
-                                      <span class="breakeven-label">Breakeven</span>
-                                      <span class="breakeven-text">{premium}</span>
+                                      {#if isBreakevenCell}
+                                        <span class="breakeven-label">Breakeven</span>
+                                      {:else}
+                                        <span class="percentage-label" class:profit={percentageChange.isProfit} class:loss={!percentageChange.isProfit}>
+                                          {percentageChange.text}
+                                        </span>
+                                      {/if}
+                                      <span class:breakeven-text={isBreakevenCell}>{premium}</span>
                                     </div>
                                   {:else}
                                     <span>{premium}</span>
@@ -452,24 +464,40 @@
     background-color: #4338ca; /* bg-indigo-700 */
   }
 
-  /* [MODIFIED] Styles for the breakeven indicator */
+  /* Styles for the breakeven indicator */
   .breakeven-label {
     font-size: 0.6rem;
     font-weight: bold;
     color: #facc15; /* yellow-400 */
     text-transform: uppercase;
-    line-height: 1; /* Tighter line height for the label */
+    line-height: 1;
   }
   .breakeven-text {
     font-weight: bold;
     color: #fde047; /* yellow-300 */
-    text-shadow: 0 0 8px rgba(250, 204, 21, 0.5); /* Glowing effect */
-    line-height: 1.2; /* Give it some space from the label */
+    text-shadow: 0 0 8px rgba(250, 204, 21, 0.5);
+    line-height: 1.2;
   }
 
-  /* Responsive adjustments for the breakeven label on larger screens */
+  /* [NEW] Styles for the percentage change indicator */
+  .percentage-label {
+    font-size: 0.6rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .percentage-label.profit {
+    color: #4ade80; /* green-400 */
+    text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+  }
+  .percentage-label.loss {
+    color: #f87171; /* red-400 */
+    text-shadow: 0 0 8px rgba(248, 113, 113, 0.5);
+  }
+
+  /* Responsive adjustments for the labels */
   @media (min-width: 640px) {
-    .breakeven-label {
+    .breakeven-label, .percentage-label {
       font-size: 0.65rem;
     }
   }

@@ -17,7 +17,7 @@
 </script>
 
 <!-- This is the main container for the application, styled with Tailwind CSS classes -->
-<div class="bg-gray-900 text-gray-200 min-h-screen font-sans">
+<div class="bg-gray-900 text-gray-200 min-h-screen font-sans flex flex-col">
   <header class="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-50">
     <nav class="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
       <!-- Logo and App Name -->
@@ -59,6 +59,23 @@
     <!-- It's where the content of the current page will be rendered. -->
     <slot />
   </main>
+
+  <!-- [NEW] Global Footer -->
+  <footer class="bg-gray-800/50 border-t border-gray-700 mt-auto">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-gray-400 text-sm">
+      <p>&copy; {new Date().getFullYear()} Deltuh. All Rights Reserved.</p>
+      <div class="mt-2 space-x-4">
+        <a href="/terms" class="hover:text-white transition-colors">Terms of Service</a>
+        <span>&bull;</span>
+        <a href="/privacy" class="hover:text-white transition-colors">Privacy Policy</a>
+      </div>
+    </div>
+  </footer>
 </div>
 
-<!-- The <style global> block has been removed from this file -->
+<style global>
+  /* This global style prevents horizontal scrolling/zooming on mobile */
+  html, body {
+    overflow-x: hidden;
+  }
+</style>

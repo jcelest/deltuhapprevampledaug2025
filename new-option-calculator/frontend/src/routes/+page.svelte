@@ -4,17 +4,16 @@
 </script>
 
 <!-- 
-  FIX: All 'overflow' classes have been removed. The layout is now controlled
-  by a media query in the <style> block, which is a more robust solution.
+  FIX: This outer container now has a minimum height and overflow-hidden to
+  properly contain the new fixed-position background and prevent mobile zooming.
 -->
-<div class="relative">
+<div class="relative min-h-[calc(100vh-64px)] overflow-hidden">
     
     <!-- 
-      This div creates the animated, glowing "aurora" background effect.
+      [NEW] This div creates the animated, flowing gradient background.
+      'position: fixed' makes it fill the entire viewport, solving the desktop issue.
     -->
-    <div aria-hidden="true" class="absolute inset-0 z-0">
-      <div class="aurora-bg"></div>
-    </div>
+    <div class="background-gradient"></div>
 
     <!-- 
       This is the main content container, positioned above the background with a relative z-index.
@@ -24,7 +23,6 @@
       <div class="max-w-4xl">
         <!-- Logo Placeholder -->
         <div class="mb-8 animate-fade-in-down">
-          <!-- Replaced placeholder SVG with your logo -->
           <img src="/deltuh logo.svg" alt="Deltuh Logo" class="mx-auto h-20 w-auto">
         </div>
 
@@ -71,49 +69,27 @@
 </div>
 
 <style>
-  /* This global style ensures the root HTML element has a dark background,
-     preventing any white space from showing at the bottom of the page.
-   */
   :global(html) {
     background-color: #111827; /* Corresponds to Tailwind's bg-gray-900 */
   }
 
-  /* This style block contains custom CSS for the animations that Tailwind doesn't provide out-of-the-box. */
-  .aurora-bg {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 1400px;
-    height: 1400px;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.2) 0%, rgba(0,0,0,0) 70%),
-                radial-gradient(ellipse at center, rgba(79, 70, 229, 0.2) 0%, rgba(0,0,0,0) 70%);
-    animation: pulse 10s infinite ease-in-out;
-    opacity: 0.5;
+  /* [NEW] Styles for the flowing gradient background */
+  .background-gradient {
+    position: fixed; /* Changed from absolute to fixed */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    background: linear-gradient(270deg, #3730a3, #5b21b6, #1e1b4b, #111827);
+    background-size: 400% 400%;
+    animation: gradient-flow 20s ease infinite;
   }
 
-  /*
-    This media query makes the background gradient smaller on mobile devices,
-    which prevents it from overflowing the screen.
-  */
-  @media (max-width: 768px) {
-    .aurora-bg {
-      width: 400px;
-      height: 400px;
-      top: 40%; /* Move the gradient up on mobile */
-      opacity: 0.7; /* Make the gradient brighter on mobile */
-    }
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 0.5;
-    }
-    50% {
-      transform: translate(-50%, -50%) scale(1.2);
-      opacity: 0.7;
-    }
+  @keyframes gradient-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
 
   @keyframes fade-in-down {
@@ -138,10 +114,6 @@
     }
   }
 
-  /*
-    These classes apply the animations. We use a separate class
-    so that Tailwind can still handle the rest of the styling.
-  */
   .animate-fade-in-down {
     animation: fade-in-down 0.8s ease-out forwards;
   }

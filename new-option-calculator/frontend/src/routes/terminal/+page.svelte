@@ -79,7 +79,7 @@
         return;
     }
     isLoading = true;
-    // Don't clear results here, so the old table stays visible during recalculation
+    clearResults();
     
     try {
         // Step 1: Fetch market data
@@ -129,7 +129,7 @@
   }
   
   /**
-   * [NEW] A function to re-calculate only if results are already visible.
+   * A function to re-calculate only if results are already visible.
    */
   function reCalculate() {
     if (calculationResults) {
@@ -155,6 +155,15 @@
   }
 
   /**
+   * [NEW] Checks if the current premium range matches the overall current price.
+   */
+  function isCurrentPrice(premiumRange) {
+      if (!calculationResults) return false;
+      const targetPrice = optionType === 'call' ? calculationResults.callPriceRange : calculationResults.putPriceRange;
+      return premiumRange === targetPrice;
+  }
+
+  /**
    * Calculates the percentage change from the entry price.
    */
   function getPercentageChange(premiumRange, priceToAnalyze) {
@@ -167,6 +176,17 @@
           text: `${sign}${change.toFixed(1)}%`,
           isProfit,
       };
+  }
+
+  /**
+   * Determines if a stock price is "In the Money" for the current option type.
+   */
+  function isITM(currentStockPrice, currentStrikePrice, currentOptionType) {
+      if (currentOptionType === 'call') {
+          return currentStockPrice > currentStrikePrice;
+      } else { // 'put'
+          return currentStockPrice < currentStrikePrice;
+      }
   }
 
   /**
@@ -384,7 +404,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {#each calculationResults.tableData.rows as row}
+                    {#each calculationResults.tableData.rows as row, i}
                         {@const isStrike = Math.abs(row.stockPrice - strikePrice) < 0.01}
                         {@const isCurrent = Math.abs(row.stockPrice - stockPrice) < 0.01}
                         <tr 
@@ -407,12 +427,13 @@
                             {#each row.premiums as premium}
                                 {@const isBreakevenCell = isBreakeven(premium, entryPrice)}
                                 {@const percentageChange = getPercentageChange(premium, entryPrice)}
+                                {@const isCurrentPriceCell = isCurrentPrice(premium)}
                                 <td 
                                   class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
                                   style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
                                 >
                                   {#if isAnalyzing && entryPrice > 0}
-                                    <div class="flex flex-col justify-center leading-tight">
+                                    <div class="flex flex-col justify-center items-center">
                                       {#if isBreakevenCell}
                                         <span class="breakeven-label">Breakeven</span>
                                       {:else}
@@ -422,12 +443,54 @@
                                       {/if}
                                       <span class:breakeven-text={isBreakevenCell}>{premium}</span>
                                     </div>
+                                  {:else if isCurrentPriceCell}
+                                    <div class="flex flex-col justify-center items-center">
+                                        <span class="current-label">Current</span>
+                                        <span class="current-text">{premium}</span>
+                                    </div>
                                   {:else}
                                     <span>{premium}</span>
                                   {/if}
                                 </td>
                             {/each}
                         </tr>
+                        
+                        <!-- This block checks if a separator should be added after the current row -->
+                        {#if i < calculationResults.tableData.rows.length - 1}
+                            {@const currentRowITM = isITM(row.stockPrice, strikePrice, optionType)}
+                            {@const nextRowITM = isITM(calculationResults.tableData.rows[i + 1].stockPrice, strikePrice, optionType)}
+                            {#if currentRowITM !== nextRowITM}
+                                <tr class="itm-otm-separator-row">
+                                    <td colspan={calculationResults.tableData.timeHeaders.length + 1}>
+                                        <div class="separator-content">
+                                            <div class="flex items-center gap-2">
+                                                <!-- [FIXED] Swapped the arrows and text for the 'call' option type -->
+                                                {#if optionType === 'call'}
+                                                    <!-- Arrow pointing UP towards ITM for calls -->
+                                                    <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+                                                    <span class="separator-text">In the Money</span>
+                                                {:else}
+                                                    <!-- Arrow pointing DOWN towards ITM for puts -->
+                                                    <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                                    <span class="separator-text">In the Money</span>
+                                                {/if}
+                                            </div>
+                                            <span class="separator-line"></span>
+                                            <div class="flex items-center gap-2">
+                                                <span class="separator-text">Out of the Money</span>
+                                                {#if optionType === 'call'}
+                                                    <!-- Arrow pointing DOWN towards OTM for calls -->
+                                                    <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                                {:else}
+                                                    <!-- Arrow pointing UP towards OTM for puts -->
+                                                    <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+                                                {/if}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {/if}
+                        {/if}
                     {/each}
                 </tbody>
             </table>
@@ -469,7 +532,7 @@
     line-height: 1.2;
   }
 
-  /* [NEW] Styles for the percentage change indicator */
+  /* Styles for the percentage change indicator */
   .percentage-label {
     font-size: 0.6rem;
     font-weight: bold;
@@ -484,11 +547,51 @@
     color: #f87171; /* red-400 */
     text-shadow: 0 0 8px rgba(248, 113, 113, 0.5);
   }
+  
+  /* [NEW] Styles for the current price indicator */
+  .current-label {
+      font-size: 0.6rem;
+      font-weight: bold;
+      color: #93c5fd; /* blue-300 */
+      text-transform: uppercase;
+      line-height: 1;
+  }
+  .current-text {
+      font-weight: bold;
+      color: #60a5fa; /* blue-400 */
+      text-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+      line-height: 1.2;
+  }
 
   /* Responsive adjustments for the labels */
   @media (min-width: 640px) {
-    .breakeven-label, .percentage-label {
+    .breakeven-label, .percentage-label, .current-label {
       font-size: 0.65rem;
     }
+  }
+
+  /* [MODIFIED] Styles for the ITM/OTM separator */
+  .itm-otm-separator-row td {
+      padding: 0 !important;
+  }
+  .separator-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 4px 1rem;
+  }
+  .separator-line {
+      flex-grow: 1;
+      height: 2px;
+      background-color: #4f46e5; /* indigo-600 */
+      margin: 0 1rem;
+      border-radius: 99px;
+  }
+  .separator-text {
+      font-size: 0.7rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #a78bfa; /* violet-400 */
   }
 </style>

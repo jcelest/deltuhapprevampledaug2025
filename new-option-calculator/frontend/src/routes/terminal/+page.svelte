@@ -54,6 +54,9 @@
   let entryPrice = '';
   let entryPriceHeatmapMax = 0;
 
+  // State to hold the coordinates of the single "current premium" cell
+  let currentPremiumCoords = null;
+
   // The URL of our backend server
   const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
@@ -68,6 +71,7 @@
       error = '';
       isAnalyzing = false;
       entryPrice = '';
+      currentPremiumCoords = null; // Reset the coordinates
   }
 
   /**
@@ -85,11 +89,9 @@
         // Step 1: Fetch market data
         const marketDataResponse = await axios.post(`${API_URL}/api/fetch-market-data`, { ticker });
         
-        // Use the fetched data, but allow user overrides if they've typed something in.
         const finalStockPrice = stockPrice || marketDataResponse.data.currentStockPrice;
         const finalImpliedVolatility = impliedVolatility || marketDataResponse.data.impliedVolatility;
 
-        // Update the state to show the user the auto-populated values
         stockPrice = finalStockPrice;
         impliedVolatility = finalImpliedVolatility;
 
@@ -105,7 +107,13 @@
         const calculationResponse = await axios.post(`${API_URL}/api/calculate`, params);
         calculationResults = calculationResponse.data;
 
-        // This logic correctly processes the backend response to create the info message.
+        // [FIXED] Find the coordinates of the cell for the current stock price and current time.
+        const currentPriceRowIndex = calculationResults.tableData.rows.findIndex(row => Math.abs(row.stockPrice - stockPrice) < 0.01);
+        if (currentPriceRowIndex !== -1) {
+            // The current premium is always in the first time column (j=0) of the current price row.
+            currentPremiumCoords = { row: currentPriceRowIndex, col: 0 };
+        }
+
         const asOfTime = new Date(calculationResponse.data.calculationTime);
         if (calculationResponse.data.isMarketOpen) {
             infoMessage = `Prices calculated in real-time as of ${asOfTime.toLocaleString()}.`;
@@ -113,7 +121,6 @@
             infoMessage = `The market is currently closed. Prices are based on the last market close: ${asOfTime.toLocaleString()}.`;
         }
 
-        // Auto-scroll to the results section after the DOM has updated
         await tick();
         if (resultsSection) {
           const topOffset = resultsSection.getBoundingClientRect().top + window.scrollY - 80;
@@ -152,15 +159,6 @@
       if (!isAnalyzing || !priceToAnalyze) return false;
       const [min, max] = premiumRange.split('-').map(Number);
       return priceToAnalyze >= min && priceToAnalyze <= max;
-  }
-
-  /**
-   * [NEW] Checks if the current premium range matches the overall current price.
-   */
-  function isCurrentPrice(premiumRange) {
-      if (!calculationResults) return false;
-      const targetPrice = optionType === 'call' ? calculationResults.callPriceRange : calculationResults.putPriceRange;
-      return premiumRange === targetPrice;
   }
 
   /**
@@ -424,10 +422,10 @@
                                     {/if}
                                 </div>
                             </td>
-                            {#each row.premiums as premium}
+                            {#each row.premiums as premium, j}
                                 {@const isBreakevenCell = isBreakeven(premium, entryPrice)}
                                 {@const percentageChange = getPercentageChange(premium, entryPrice)}
-                                {@const isCurrentPriceCell = isCurrentPrice(premium)}
+                                {@const isCurrentPremiumCell = currentPremiumCoords && currentPremiumCoords.row === i && currentPremiumCoords.col === j}
                                 <td 
                                   class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
                                   style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
@@ -443,7 +441,7 @@
                                       {/if}
                                       <span class:breakeven-text={isBreakevenCell}>{premium}</span>
                                     </div>
-                                  {:else if isCurrentPriceCell}
+                                  {:else if isCurrentPremiumCell}
                                     <div class="flex flex-col justify-center items-center">
                                         <span class="current-label">Current</span>
                                         <span class="current-text">{premium}</span>
@@ -464,25 +462,25 @@
                                     <td colspan={calculationResults.tableData.timeHeaders.length + 1}>
                                         <div class="separator-content">
                                             <div class="flex items-center gap-2">
-                                                <!-- [FIXED] Swapped the arrows and text for the 'call' option type -->
-                                                {#if optionType === 'call'}
-                                                    <!-- Arrow pointing UP towards ITM for calls -->
+                                                <!-- [FIXED] Corrected arrow logic for calls and puts -->
+                                                {#if (optionType === 'call' && currentRowITM) || (optionType === 'put' && !currentRowITM)}
+                                                    <!-- Arrow pointing UP (towards lower stock prices) -->
                                                     <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
                                                     <span class="separator-text">In the Money</span>
                                                 {:else}
-                                                    <!-- Arrow pointing DOWN towards ITM for puts -->
+                                                    <!-- Arrow pointing DOWN (towards higher stock prices) -->
                                                     <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-                                                    <span class="separator-text">In the Money</span>
+                                                    <span class="separator-text">Out of the Money</span>
                                                 {/if}
                                             </div>
                                             <span class="separator-line"></span>
                                             <div class="flex items-center gap-2">
-                                                <span class="separator-text">Out of the Money</span>
-                                                {#if optionType === 'call'}
-                                                    <!-- Arrow pointing DOWN towards OTM for calls -->
+                                                <span class="separator-text">{!currentRowITM ? 'In the Money' : 'Out of the Money'}</span>
+                                                {#if (optionType === 'call' && currentRowITM) || (optionType === 'put' && !currentRowITM)}
+                                                    <!-- Arrow pointing DOWN -->
                                                     <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                                                 {:else}
-                                                    <!-- Arrow pointing UP towards OTM for puts -->
+                                                    <!-- Arrow pointing UP -->
                                                     <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
                                                 {/if}
                                             </div>

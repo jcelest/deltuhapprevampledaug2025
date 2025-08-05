@@ -468,8 +468,7 @@
                             {/each}
                         </tr>
                         
-                        <!-- [CORRECTED] This block has been completely rewritten for clarity and correctness. -->
-                        <!-- It checks if the line between the current row and the next row is the border between ITM and OTM. -->
+                        <!-- This block checks if the line between the current row and the next row is the border between ITM and OTM. -->
                         {#if i < calculationResults.tableData.rows.length - 1}
                             {@const regionAboveIsITM = isITM(row.stockPrice, strikePrice, optionType)}
                             {@const regionBelowIsITM = isITM(calculationResults.tableData.rows[i + 1].stockPrice, strikePrice, optionType)}
@@ -480,26 +479,24 @@
                                         <div class="separator-content">
                                             <!-- Left side of separator (describes region ABOVE - lower stock prices) -->
                                             <div class="flex items-center gap-2">
-                                                <!-- Arrow always points UP into the region above the line -->
-                                                <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+                                                <svg class="h-4 w-4" class:itm-arrow={optionType === 'put'} class:otm-arrow={optionType === 'call'} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
                                                 {#if optionType === 'call'}
-                                                    <span class="separator-text">Out of the Money</span>
+                                                    <span class="separator-text otm-text">Out of the Money</span>
                                                 {:else}
-                                                    <span class="separator-text">In the Money</span>
+                                                    <span class="separator-text itm-text">In the Money</span>
                                                 {/if}
                                             </div>
 
-                                            <span class="separator-line"></span>
+                                            <span class="separator-line" class:call={optionType === 'call'} class:put={optionType === 'put'}></span>
 
                                             <!-- Right side of separator (describes region BELOW - higher stock prices) -->
                                             <div class="flex items-center gap-2">
                                                 {#if optionType === 'call'}
-                                                    <span class="separator-text">In the Money</span>
+                                                    <span class="separator-text itm-text">In the Money</span>
                                                 {:else}
-                                                    <span class="separator-text">Out of the Money</span>
+                                                    <span class="separator-text otm-text">Out of the Money</span>
                                                 {/if}
-                                                <!-- Arrow always points DOWN into the region below the line -->
-                                                <svg class="h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                                <svg class="h-4 w-4" class:itm-arrow={optionType === 'call'} class:otm-arrow={optionType === 'put'} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                                             </div>
                                         </div>
                                     </td>
@@ -599,14 +596,34 @@
   .separator-line {
       flex-grow: 1;
       height: 2px;
-      background-color: #4f46e5; /* indigo-600 */
       margin: 0 1rem;
       border-radius: 99px;
   }
+  /* [NEW] Dynamic gradient for the separator line */
+  .separator-line.call {
+    background: linear-gradient(to right, #ef4444, #22c55e); /* red to green */
+  }
+  .separator-line.put {
+    background: linear-gradient(to right, #22c55e, #ef4444); /* green to red */
+  }
+
   .separator-text {
       font-size: 0.7rem;
       font-weight: bold;
       text-transform: uppercase;
-      color: #a78bfa; /* violet-400 */
+  }
+  
+  /* [NEW] Color coding for text and arrows */
+  .itm-text {
+    color: #4ade80; /* green-400 */
+  }
+  .otm-text {
+    color: #f87171; /* red-400 */
+  }
+  .itm-arrow {
+    color: #4ade80; /* green-400 */
+  }
+  .otm-arrow {
+    color: #f87171; /* red-400 */
   }
 </style>

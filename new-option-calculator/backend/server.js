@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 5001; // Use port from .env or default to 5001
 
 // Enable Cross-Origin Resource Sharing (CORS) to allow our frontend to make requests
 const allowedOrigins = [
-  'https://deltuh.vercel.app/',
+  'https://deltuh.vercel.app',
   'http://localhost:5173'
 ];
 

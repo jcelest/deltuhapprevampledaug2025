@@ -115,16 +115,26 @@
 
         <!-- Sidebar Cards Container -->
         <div class="space-y-8">
-            <!-- Subscription Card -->
-            <div class="settings-card">
-                <h3 class="card-header">Subscription</h3>
-                <p class="text-gray-400 mb-6">
-                  Your current plan: <span class="font-semibold text-green-400">Premium</span>
-                </p>
-                <a href="/subscription" class="button-secondary w-full text-center">
-                  Manage Subscription
-                </a>
-            </div>
+            <!-- [MODIFIED] Subscription Card -->
+            <a href="/subscription" class="settings-card group flex flex-col text-left transition-all duration-300 hover:border-gray-600">
+                <div class="flex-grow">
+                    <div class="flex items-center space-x-4 mb-4">
+                        <div class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                            <!-- SVG Icon for Subscription -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl sm:text-2xl font-semibold text-white">Subscription</h3>
+                    </div>
+                    <p class="text-gray-400">
+                      Your current plan: <span class="font-semibold text-green-400">Premium</span>
+                    </p>
+                </div>
+                <span class="font-semibold text-indigo-400 group-hover:text-indigo-300 mt-6 text-base self-start">
+                    Manage Plan &rarr;
+                </span>
+            </a>
 
             <!-- Delete Account Card -->
             <div class="bg-gray-800/80 backdrop-blur-sm p-6 sm:p-8 rounded-2xl border border-red-700/50">

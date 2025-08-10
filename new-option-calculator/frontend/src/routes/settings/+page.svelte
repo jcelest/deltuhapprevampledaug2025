@@ -17,6 +17,12 @@
     if (!token) {
       goto('/login');
     }
+    
+    // If the user store is empty on refresh, re-populate it.
+    if (!$user) {
+        user.set({ email: 'user@example.com' });
+    }
+
     // When the component mounts, set the email from the user store
     if ($user && $user.email) {
         email = $user.email;
@@ -115,9 +121,9 @@
                 <p class="text-gray-400 mb-6">
                   Your current plan: <span class="font-semibold text-green-400">Premium</span>
                 </p>
-                <button class="button-secondary w-full">
+                <a href="/subscription" class="button-secondary w-full text-center">
                   Manage Subscription
-                </button>
+                </a>
             </div>
 
             <!-- Delete Account Card -->
@@ -126,14 +132,14 @@
                 <p class="text-gray-400 mb-6 text-sm">
                   Deleting your account is a permanent action and cannot be undone.
                 </p>
-                <button class="w-full bg-red-600/20 hover:bg-red-500/30 text-red-400 font-semibold py-3 px-4 rounded-md transition-all">
+                <button class="button-danger w-full">
                   Delete Account
                 </button>
             </div>
         </div>
       </div>
       
-      <!-- [MODIFIED] Global Footer -->
+      <!-- Global Footer -->
       <footer class="border-t border-gray-700 pt-8 mt-8">
         <div class="text-center text-gray-400 text-sm">
           <p>&copy; {new Date().getFullYear()} Deltuh. All Rights Reserved.</p>
@@ -189,10 +195,37 @@
   .input-field {
     @apply bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition w-full;
   }
+  
+  /* [MODIFIED] Button Styles */
   .button-primary {
-    @apply bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg transition-all text-base;
+    @apply font-bold py-3 px-6 rounded-lg text-base text-white transition-all duration-300;
+    background-image: linear-gradient(to right, #4f46e5, #7c3aed);
+    border: 1px solid #6d28d9;
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
   }
+  .button-primary:hover {
+    box-shadow: 0 0 25px rgba(124, 58, 237, 0.6);
+    transform: translateY(-2px);
+  }
+
   .button-secondary {
-    @apply bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-md transition-all;
+    @apply font-semibold py-3 px-4 rounded-md text-white transition-all duration-300;
+    background-color: #374151; /* bg-gray-700 */
+    border: 1px solid #4b5563; /* border-gray-600 */
+  }
+  .button-secondary:hover {
+    background-color: #4b5563; /* hover:bg-gray-600 */
+    border-color: #6b7280; /* hover:border-gray-500 */
+  }
+
+  .button-danger {
+    @apply font-semibold py-3 px-4 rounded-md text-red-400 transition-all duration-300;
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+  }
+  .button-danger:hover {
+    background-color: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.6);
+    color: #f87171; /* hover:text-red-400 */
   }
 </style>

@@ -93,7 +93,7 @@
     </div>
   </div>
 
-  <!-- [NEW] Saved Calculations Card -->
+  <!-- [MODIFIED] Saved Calculations Section -->
   <div class="bg-gray-800 p-6 sm:p-8 rounded-2xl border border-gray-700">
     <div class="flex items-center space-x-4 mb-6">
         <div class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
@@ -105,24 +105,31 @@
         <h3 class="text-2xl sm:text-3xl font-bold text-white">Saved Calculations</h3>
     </div>
     
-    <!-- Placeholder for saved calculations list -->
-    <div class="space-y-4">
+    <!-- [MODIFIED] Grid layout for saved calculations -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Example of a saved item -->
-        <a href="#" class="saved-item-link group">
+        <a href="#" class="saved-item-card group">
             <div class="flex-grow">
                 <p class="font-bold text-white group-hover:text-indigo-300 transition-colors">AAPL - Iron Condor</p>
                 <p class="text-sm text-gray-400">Saved on: 2023-10-27</p>
             </div>
             <span class="text-indigo-400 group-hover:text-white transition-colors">&rarr;</span>
         </a>
-        <a href="#" class="saved-item-link group">
+        <a href="#" class="saved-item-card group">
             <div class="flex-grow">
                 <p class="font-bold text-white group-hover:text-indigo-300 transition-colors">TSLA - Long Call</p>
                 <p class="text-sm text-gray-400">Saved on: 2023-10-26</p>
             </div>
             <span class="text-indigo-400 group-hover:text-white transition-colors">&rarr;</span>
         </a>
-        <div class="text-center py-6">
+        <a href="#" class="saved-item-card group">
+            <div class="flex-grow">
+                <p class="font-bold text-white group-hover:text-indigo-300 transition-colors">NVDA - Vertical Spread</p>
+                <p class="text-sm text-gray-400">Saved on: 2023-10-25</p>
+            </div>
+            <span class="text-indigo-400 group-hover:text-white transition-colors">&rarr;</span>
+        </a>
+        <div class="text-center py-6 md:col-span-2">
             <p class="text-gray-500">No more saved calculations.</p>
         </div>
     </div>
@@ -131,7 +138,8 @@
 {/if}
 
 <style>
-    .saved-item-link {
-        @apply flex items-center bg-gray-900/50 p-4 rounded-lg border border-gray-700 hover:border-indigo-500 transition-all duration-200;
+    /* [NEW] Styles for the redesigned saved calculations card */
+    .saved-item-card {
+        @apply flex items-center bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-xl border border-gray-700 transition-all duration-300 transform hover:scale-105 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10;
     }
 </style>

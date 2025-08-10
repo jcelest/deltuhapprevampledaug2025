@@ -20,7 +20,10 @@
   }
 </script>
 
-<div class="page-container">
+<div class="relative min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-hidden">
+  <!-- Motion Gradient Background -->
+  <div class="background-gradient fixed"></div>
+
   <div class="relative z-10 w-full max-w-7xl space-y-8 sm:space-y-12">
     <!-- Main Header -->
     <div class="text-center">
@@ -89,17 +92,18 @@
 </div>
 
 <style>
-  /* [MODIFIED] Use a global style tag to apply the background to the body */
-  :global(body) {
-    background: linear-gradient(240deg, #1e1b4b, #4c1d95, #111827, #111827);
-    background-size: 400% 400%;
-    animation: gradient-animation 20s ease infinite;
+  .background-gradient {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      background: linear-gradient(240deg, #1e1b4b, #4c1d95, #111827, #111827);
+      background-size: 400% 400%;
+      animation: gradient-animation 20s ease infinite;
   }
 
-  .page-container {
-    @apply relative min-h-screen w-full flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8;
-  }
-  
   @keyframes gradient-animation {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
@@ -112,7 +116,7 @@
 
   /* [MODIFIED] Removed the default scale-105 from the featured card */
   .tier-card.featured {
-    @apply border-2 z-10;
+    @apply border-2 z-10 lg:scale-105;
   }
   
   .tier-card.gold {

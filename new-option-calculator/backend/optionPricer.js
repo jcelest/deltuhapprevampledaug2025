@@ -6,7 +6,7 @@ const RISK_FREE_RATES = [-0.0062, -0.0030, 0.0000, 0.10, 0.30];
 // A list of US stock market holidays (YYYY-MM-DD format).
 const US_HOLIDAYS = [
     // 2024
-    "2024-01-01", "2024-01-15", "2024-02-19", "2024-03-29", "2024-05-27",
+    "2024-01-01", "2024-01-15", "2024-02-19", "2024-03-29", "2024-05-27", 
     "2024-06-19", "2024-07-04", "2024-09-02", "2024-11-28", "2024-12-25",
     // 2025
     "2025-01-01", "2025-01-20", "2025-02-17", "2025-04-18", "2025-05-26",
@@ -17,7 +17,7 @@ const US_HOLIDAYS = [
 ];
 
 /**
- * [FIXED] Checks if a given date is a valid US stock market trading day, 
+ * Checks if a given date is a valid US stock market trading day, 
  * explicitly using the America/New_York timezone.
  * @param {Date} date - The date to check.
  * @returns {boolean} True if the date is a trading day.
@@ -49,7 +49,7 @@ function isTradingDay(date) {
 // --- Market Hours Logic ---
 
 /**
- * [FIXED] Determines the correct timestamp for a calculation based on whether the
+ * Determines the correct timestamp for a calculation based on whether the
  * US stock market is currently open, explicitly using the America/New_York timezone.
  * @returns {{calculationTime: Date, isMarketOpen: boolean}} An object containing the correct time and market status.
  */
@@ -118,13 +118,10 @@ function getCalculationTime() {
 }
 
 
-// --- Helper Functions (ported directly from your original optioncalculator.js) ---
+// --- Helper Functions ---
 
 /**
  * Rounds a stock price to the nearest specified preference.
- * @param {number} stockPrice - The price to round.
- * @param {number} roundingPreference - The value to round to (e.g., 0.5, 1, 5).
- * @returns {number} The rounded price.
  */
 function roundStockPrice(stockPrice, roundingPreference) {
     switch (roundingPreference) {
@@ -138,17 +135,18 @@ function roundStockPrice(stockPrice, roundingPreference) {
 }
 
 /**
- * Calculates a dynamic range of stock prices for the table rows, matching the original app's logic.
+ * [MODIFIED] Calculates a stock price range that encompasses the current price and all strike prices in a strategy.
  * @param {number} S - Current stock price.
- * @param {number} K - Strike price.
+ * @param {number[]} strikePrices - An array of all strike prices from the strategy legs.
  * @param {number} priceIncrement - The increment value for the price range.
  * @returns {number[]} An array of stock prices.
  */
-function calculateStockPriceRange(S, K, priceIncrement) {
+function calculateStockPriceRange(S, strikePrices, priceIncrement) {
     let stockPriceRange = [];
-    // This logic now exactly matches your original code for a wider range.
-    let lowerBound = Math.min(S, K) - priceIncrement * 5;
-    let upperBound = Math.max(S, K) + priceIncrement * 5;
+    const allPrices = [S, ...strikePrices];
+    
+    let lowerBound = Math.min(...allPrices) - priceIncrement * 5;
+    let upperBound = Math.max(...allPrices) + priceIncrement * 5;
 
     lowerBound = Math.floor(lowerBound / priceIncrement) * priceIncrement;
     upperBound = Math.ceil(upperBound / priceIncrement) * priceIncrement;
@@ -157,9 +155,10 @@ function calculateStockPriceRange(S, K, priceIncrement) {
         stockPriceRange.push(roundStockPrice(price, priceIncrement));
     }
 
-    // Ensure the actual current stock price and strike price are included in the list.
-    if (!stockPriceRange.includes(S)) stockPriceRange.push(S);
-    if (!stockPriceRange.includes(K)) stockPriceRange.push(K);
+    // Ensure the actual current stock price and all strike prices are included.
+    allPrices.forEach(p => {
+        if (!stockPriceRange.includes(p)) stockPriceRange.push(p);
+    });
     
     // Sort the final list and remove any duplicates.
     stockPriceRange = [...new Set(stockPriceRange)].sort((a, b) => a - b);
@@ -168,168 +167,177 @@ function calculateStockPriceRange(S, K, priceIncrement) {
 }
 
 
-// --- Core Calculation Engine ---
+// --- Core Calculation Engine: Cox-Ross-Rubinstein Binomial Model ---
 
 /**
- * Calculates the value of a call or put option using the Black-Scholes model.
- * @param {boolean} isCall - True for a call option, false for a put option.
- * @param {number} S - Current stock price.
- * @param {number} K - Strike price.
- * @param {number} T - Time to expiration in years.
- * @param {number} sigma - Implied volatility as a decimal (e.g., 0.2 for 20%).
- * @param {number} r - Risk-free interest rate.
- * @returns {number} The calculated option price.
+ * Calculates the value of a single American-style option leg.
  */
-function blackScholes(isCall, S, K, T, sigma, r) {
-  if (T <= 0 || sigma <= 0) {
-    // If at or past expiration, return the intrinsic value.
-    if (isCall) return Math.max(0, S - K);
-    return Math.max(0, K - S);
-  }
+function coxRossRubinstein(isCall, S, K, T, sigma, r, steps = 100) {
+    if (T <= 0 || sigma <= 0) {
+        return isCall ? Math.max(0, S - K) : Math.max(0, K - S);
+    }
 
-  const d1 = (Math.log(S / K) + (r + (sigma ** 2) / 2) * T) / (sigma * Math.sqrt(T));
-  const d2 = d1 - sigma * Math.sqrt(T);
-  const cdf_d1 = normalCdf(d1);
-  const cdf_d2 = normalCdf(d2);
+    const dt = T / steps;
+    const u = Math.exp(sigma * Math.sqrt(dt));
+    const d = 1 / u;
+    const p = (Math.exp(r * dt) - d) / (u - d);
+    const discount = Math.exp(-r * dt);
 
-  if (isCall) {
-    return S * cdf_d1 - K * Math.exp(-r * T) * cdf_d2;
-  } else {
-    return K * Math.exp(-r * T) * (1 - cdf_d2) - S * (1 - cdf_d1);
-  }
+    const prices = new Array(steps + 1);
+    const optionValues = new Array(steps + 1);
+
+    for (let i = 0; i <= steps; i++) {
+        prices[i] = S * Math.pow(u, i) * Math.pow(d, steps - i);
+        optionValues[i] = isCall ? Math.max(0, prices[i] - K) : Math.max(0, K - prices[i]);
+    }
+
+    for (let step = steps - 1; step >= 0; step--) {
+        for (let i = 0; i <= step; i++) {
+            const holdValue = (p * optionValues[i + 1] + (1 - p) * optionValues[i]) * discount;
+            const priceAtNode = S * Math.pow(u, i) * Math.pow(d, step - i);
+            const exerciseValue = isCall ? Math.max(0, priceAtNode - K) : Math.max(0, K - priceAtNode);
+            optionValues[i] = Math.max(holdValue, exerciseValue);
+        }
+    }
+
+    return optionValues[0];
+}
+
+// --- [NEW] Strategy Calculation Logic ---
+
+/**
+ * Calculates the average price of a single option leg by running the Binomial model
+ * across the range of risk-free interest rates.
+ * @returns {number} The average calculated premium for the leg.
+ */
+function calculateLegValue(leg, S, T, sigma) {
+    const isCall = leg.type === 'call';
+    const prices = RISK_FREE_RATES.map(r => coxRossRubinstein(isCall, S, leg.K, T, sigma, r));
+    const minPrice = Math.max(0, Math.min(...prices));
+    const maxPrice = Math.max(0, Math.max(...prices));
+    // We return the average for combining into a strategy value
+    return (minPrice + maxPrice) / 2;
 }
 
 /**
- * Approximates the cumulative distribution function (CDF) for the standard normal distribution.
- * @param {number} Z - The value to compute the CDF for.
- * @returns {number} The CDF value.
+ * Calculates the total value of a strategy (a collection of legs) at a specific stock price and time.
+ * @returns {number} The total value of the strategy.
  */
-function normalCdf(Z) {
-  const p = 0.2316419;
-  const b1 = 0.319381530;
-  const b2 = -0.356563782;
-  const b3 = 1.781477937;
-  const b4 = -1.821255978;
-  const b5 = 1.330274429;
-
-  const t = 1.0 / (1.0 + p * Math.abs(Z));
-  const pdf = Math.exp(-Z * Z / 2.0) / Math.sqrt(2 * Math.PI);
-  let cdf = 1.0 - pdf * (b1 * t + b2 * t ** 2 + b3 * t ** 3 + b4 * t ** 4 + b5 * t ** 5);
-  
-  if (Z < 0) {
-    return 1.0 - cdf;
-  }
-  return cdf;
+function calculateStrategyValue(strategy, S, T, sigma) {
+    let totalValue = 0;
+    for (const leg of strategy.legs) {
+        const legValue = calculateLegValue(leg, S, T, sigma);
+        if (leg.action === 'buy') {
+            totalValue += legValue;
+        } else { // 'sell'
+            totalValue -= legValue;
+        }
+    }
+    return totalValue;
 }
 
-/**
- * Calculates a price range for an option by running the Black-Scholes model
- * against a list of different risk-free interest rates.
- * @returns {string} A string representing the min-max price range, e.g., "1.23-1.45".
- */
-function calculateOptionPriceRange(isCall, S, K, T, sigma) {
-  const prices = RISK_FREE_RATES.map(r => blackScholes(isCall, S, K, T, sigma, r));
-  const minPrice = Math.max(0, Math.min(...prices));
-  const maxPrice = Math.max(0, Math.max(...prices));
-  return `${minPrice.toFixed(2)}-${maxPrice.toFixed(2)}`;
-}
 
 /**
- * Generates the full data set for the options pricing table.
- * @param {object} params - Input parameters for the calculation.
- * @returns {object} A structured object containing headers and rows for the table.
+ * [MODIFIED] Generates the full P/L data set for an options strategy table.
+ * @param {object} params - Input parameters for the calculation, including the strategy object.
+ * @returns {object} A structured object containing headers, rows, and initial cost.
  */
 function generateTableData(params) {
-  const { S, K, sigma, currentDateTime, expirationDateTime, priceIncrement, optionType } = params;
+    // [MODIFIED] Destructure strategy object instead of single leg params
+    const { S, sigma, currentDateTime, expirationDateTime, priceIncrement, strategy } = params;
+    
+    const allStrikePrices = strategy.legs.map(leg => leg.K);
 
-  // 1. Calculate Time to Expiration (T) in years
-  const timeToExpiration = (expirationDateTime - currentDateTime) / (1000 * 60 * 60 * 24 * 365.25);
-  if (timeToExpiration <= 0) {
-      return { error: "Expiration must be in the future." };
-  }
+    const timeToExpirationInitial = (expirationDateTime - currentDateTime) / (1000 * 60 * 60 * 24 * 365.25);
+    if (timeToExpirationInitial <= 0) {
+        return { error: "Expiration must be in the future." };
+    }
 
-  // 2. Generate Stock Price Headers for the table rows using the advanced logic
-  const stockPriceHeaders = calculateStockPriceRange(S, K, priceIncrement);
+    // [MODIFIED] Pass all strike prices to generate a comprehensive range
+    const stockPriceHeaders = calculateStockPriceRange(S, allStrikePrices, priceIncrement);
 
-  // 3. [FIXED] This logic now correctly calculates time increments within market hours.
-  const timeHeaders = [];
-  const incrementsCount = 13;
-  
-  let totalTradingMinutes = 0;
-  let tempDate = new Date(currentDateTime);
-  
-  // Calculate total trading minutes accurately
-  while (tempDate < expirationDateTime) {
-      if (isTradingDay(tempDate)) {
-          const startOfDay = new Date(tempDate);
-          startOfDay.setUTCHours(13, 30, 0, 0); // 9:30 AM ET in UTC (approx)
-          const endOfDay = new Date(tempDate);
-          endOfDay.setUTCHours(20, 0, 0, 0); // 4:00 PM ET in UTC (approx)
+    // This logic correctly calculates time increments within market hours.
+    const timeHeaders = [];
+    const incrementsCount = 13;
+    let totalTradingMinutes = 0;
+    let tempDate = new Date(currentDateTime);
+    while (tempDate < expirationDateTime) {
+        if (isTradingDay(tempDate)) {
+            const startOfDay = new Date(tempDate);
+            startOfDay.setUTCHours(13, 30, 0, 0);
+            const endOfDay = new Date(tempDate);
+            endOfDay.setUTCHours(20, 0, 0, 0);
+            if (tempDate < endOfDay) {
+                const startCalc = tempDate < startOfDay ? startOfDay : tempDate;
+                const endCalc = expirationDateTime < endOfDay ? expirationDateTime : endOfDay;
+                if (startCalc < endCalc) {
+                    totalTradingMinutes += (endCalc - startCalc) / (1000 * 60);
+                }
+            }
+        }
+        tempDate.setUTCDate(tempDate.getUTCDate() + 1);
+        tempDate.setUTCHours(0, 0, 0, 0);
+    }
+    const incrementMinutes = totalTradingMinutes > 0 ? totalTradingMinutes / (incrementsCount - 1) : 0;
+    for (let i = 0; i < incrementsCount; i++) {
+        const minutesToAdd = i * incrementMinutes;
+        let nextTime = new Date(currentDateTime);
+        let remainingMinutes = minutesToAdd;
+        let safetyBreak = 1000;
+        while (remainingMinutes > 0 && safetyBreak > 0) {
+            const startOfDay = new Date(nextTime);
+            startOfDay.setUTCHours(13, 30, 0, 0);
+            const endOfDay = new Date(nextTime);
+            endOfDay.setUTCHours(20, 0, 0, 0);
+            if (isTradingDay(nextTime) && nextTime >= startOfDay && nextTime < endOfDay) {
+                const minutesLeftInDay = (endOfDay - nextTime) / (1000 * 60);
+                if (remainingMinutes <= minutesLeftInDay) {
+                    nextTime.setUTCMinutes(nextTime.getUTCMinutes() + remainingMinutes);
+                    remainingMinutes = 0;
+                } else {
+                    nextTime = new Date(endOfDay);
+                    remainingMinutes -= minutesLeftInDay;
+                }
+            } else {
+                nextTime.setUTCDate(nextTime.getUTCDate() + 1);
+                nextTime.setUTCHours(13, 30, 0, 0);
+                if (!isTradingDay(nextTime)) {
+                    continue;
+                }
+            }
+            safetyBreak--;
+        }
+        timeHeaders.push(nextTime);
+    }
 
-          if (tempDate < endOfDay) {
-              const startCalc = tempDate < startOfDay ? startOfDay : tempDate;
-              const endCalc = expirationDateTime < endOfDay ? expirationDateTime : endOfDay;
-              if (startCalc < endCalc) {
-                  totalTradingMinutes += (endCalc - startCalc) / (1000 * 60);
-              }
-          }
-      }
-      tempDate.setUTCDate(tempDate.getUTCDate() + 1);
-      tempDate.setUTCHours(0, 0, 0, 0);
-  }
+    // [NEW] Calculate the initial cost (net debit/credit) of the strategy
+    const initialCost = calculateStrategyValue(strategy, S, timeToExpirationInitial, sigma);
 
-  const incrementMinutes = totalTradingMinutes > 0 ? totalTradingMinutes / (incrementsCount - 1) : 0;
-  
-  for (let i = 0; i < incrementsCount; i++) {
-      const minutesToAdd = i * incrementMinutes;
-      let nextTime = new Date(currentDateTime);
-      let remainingMinutes = minutesToAdd;
+    // [MODIFIED] Generate table rows with Profit/Loss data for the strategy
+    const rows = stockPriceHeaders.map(stockPrice => {
+        const values = timeHeaders.map(timeHeader => {
+            const T_increment = (expirationDateTime.getTime() - timeHeader.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+            const projectedValue = calculateStrategyValue(strategy, stockPrice, T_increment, sigma);
+            const profitLoss = projectedValue - initialCost;
+            return profitLoss.toFixed(2); // Each cell is now a P/L value
+        });
+        return { stockPrice, values }; // Changed 'premiums' to 'values'
+    });
 
-      while (remainingMinutes > 0) {
-          const startOfDay = new Date(nextTime);
-          startOfDay.setUTCHours(13, 30, 0, 0);
-          const endOfDay = new Date(nextTime);
-          endOfDay.setUTCHours(20, 0, 0, 0);
-
-          if (isTradingDay(nextTime) && nextTime >= startOfDay && nextTime < endOfDay) {
-              const minutesLeftInDay = (endOfDay - nextTime) / (1000 * 60);
-              if (remainingMinutes <= minutesLeftInDay) {
-                  nextTime.setUTCMinutes(nextTime.getUTCMinutes() + remainingMinutes);
-                  remainingMinutes = 0;
-              } else {
-                  nextTime = endOfDay;
-                  remainingMinutes -= minutesLeftInDay;
-              }
-          } else {
-              nextTime.setUTCDate(nextTime.getUTCDate() + 1);
-              nextTime.setUTCHours(13, 30, 0, 0);
-              if (!isTradingDay(nextTime)) {
-                  // Skip weekends/holidays
-                  continue;
-              }
-          }
-      }
-      timeHeaders.push(nextTime);
-  }
-
-
-  // 4. Generate the table rows with premium data based on the selected option type
-  const isCall = optionType === 'call';
-  const rows = stockPriceHeaders.map(stockPrice => {
-      const premiums = timeHeaders.map(timeHeader => {
-          const T_increment = (expirationDateTime.getTime() - timeHeader.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-          return calculateOptionPriceRange(isCall, stockPrice, K, T_increment, sigma);
-      });
-      return { stockPrice, premiums };
-  });
-
-  return { stockPriceHeaders, timeHeaders, rows };
+    // [MODIFIED] Return the initial cost along with the table data
+    return { 
+        stockPriceHeaders, 
+        timeHeaders, 
+        rows,
+        initialCost: {
+            value: Math.abs(initialCost),
+            type: initialCost > 0 ? 'Debit' : 'Credit'
+        }
+    };
 }
 
 
 module.exports = {
-  getCalculationTime, // Export the new function
-  blackScholes,
-  calculateOptionPriceRange,
-  generateTableData,
+    getCalculationTime,
+    generateTableData,
 };

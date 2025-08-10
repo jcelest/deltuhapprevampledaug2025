@@ -118,10 +118,13 @@ function getCalculationTime() {
 }
 
 
-// --- Helper Functions ---
+// --- Helper Functions (ported directly from your original optioncalculator.js) ---
 
 /**
  * Rounds a stock price to the nearest specified preference.
+ * @param {number} stockPrice - The price to round.
+ * @param {number} roundingPreference - The value to round to (e.g., 0.5, 1, 5).
+ * @returns {number} The rounded price.
  */
 function roundStockPrice(stockPrice, roundingPreference) {
     switch (roundingPreference) {
@@ -135,18 +138,17 @@ function roundStockPrice(stockPrice, roundingPreference) {
 }
 
 /**
- * [MODIFIED] Calculates a stock price range that encompasses the current price and all strike prices in a strategy.
+ * Calculates a dynamic range of stock prices for the table rows, matching the original app's logic.
  * @param {number} S - Current stock price.
- * @param {number[]} strikePrices - An array of all strike prices from the strategy legs.
+ * @param {number} K - Strike price.
  * @param {number} priceIncrement - The increment value for the price range.
  * @returns {number[]} An array of stock prices.
  */
-function calculateStockPriceRange(S, strikePrices, priceIncrement) {
+function calculateStockPriceRange(S, K, priceIncrement) {
     let stockPriceRange = [];
-    const allPrices = [S, ...strikePrices];
-    
-    let lowerBound = Math.min(...allPrices) - priceIncrement * 5;
-    let upperBound = Math.max(...allPrices) + priceIncrement * 5;
+    // This logic now exactly matches your original code for a wider range.
+    let lowerBound = Math.min(S, K) - priceIncrement * 5;
+    let upperBound = Math.max(S, K) + priceIncrement * 5;
 
     lowerBound = Math.floor(lowerBound / priceIncrement) * priceIncrement;
     upperBound = Math.ceil(upperBound / priceIncrement) * priceIncrement;
@@ -155,10 +157,9 @@ function calculateStockPriceRange(S, strikePrices, priceIncrement) {
         stockPriceRange.push(roundStockPrice(price, priceIncrement));
     }
 
-    // Ensure the actual current stock price and all strike prices are included.
-    allPrices.forEach(p => {
-        if (!stockPriceRange.includes(p)) stockPriceRange.push(p);
-    });
+    // Ensure the actual current stock price and strike price are included in the list.
+    if (!stockPriceRange.includes(S)) stockPriceRange.push(S);
+    if (!stockPriceRange.includes(K)) stockPriceRange.push(K);
     
     // Sort the final list and remove any duplicates.
     stockPriceRange = [...new Set(stockPriceRange)].sort((a, b) => a - b);
@@ -167,10 +168,18 @@ function calculateStockPriceRange(S, strikePrices, priceIncrement) {
 }
 
 
-// --- Core Calculation Engine: Cox-Ross-Rubinstein Binomial Model ---
+// --- [NEW] Core Calculation Engine: Cox-Ross-Rubinstein Binomial Model ---
 
 /**
- * Calculates the value of a single American-style option leg.
+ * Calculates the value of an American-style option using the CRR Binomial Tree model.
+ * @param {boolean} isCall - True for a call option, false for a put option.
+ * @param {number} S - Current stock price.
+ * @param {number} K - Strike price.
+ * @param {number} T - Time to expiration in years.
+ * @param {number} sigma - Implied volatility as a decimal (e.g., 0.2 for 20%).
+ * @param {number} r - Risk-free interest rate.
+ * @param {number} steps - The number of steps in the binomial tree.
+ * @returns {number} The calculated option price.
  */
 function coxRossRubinstein(isCall, S, K, T, sigma, r, steps = 100) {
     if (T <= 0 || sigma <= 0) {
@@ -183,90 +192,77 @@ function coxRossRubinstein(isCall, S, K, T, sigma, r, steps = 100) {
     const p = (Math.exp(r * dt) - d) / (u - d);
     const discount = Math.exp(-r * dt);
 
+    // Initialize asset prices at maturity
     const prices = new Array(steps + 1);
-    const optionValues = new Array(steps + 1);
-
     for (let i = 0; i <= steps; i++) {
         prices[i] = S * Math.pow(u, i) * Math.pow(d, steps - i);
+    }
+
+    // Initialize option values at maturity
+    const optionValues = new Array(steps + 1);
+    for (let i = 0; i <= steps; i++) {
         optionValues[i] = isCall ? Math.max(0, prices[i] - K) : Math.max(0, K - prices[i]);
     }
 
+    // Step back through the tree
     for (let step = steps - 1; step >= 0; step--) {
         for (let i = 0; i <= step; i++) {
             const holdValue = (p * optionValues[i + 1] + (1 - p) * optionValues[i]) * discount;
             const priceAtNode = S * Math.pow(u, i) * Math.pow(d, step - i);
             const exerciseValue = isCall ? Math.max(0, priceAtNode - K) : Math.max(0, K - priceAtNode);
-            optionValues[i] = Math.max(holdValue, exerciseValue);
+            optionValues[i] = Math.max(holdValue, exerciseValue); // Key for American options
         }
     }
 
     return optionValues[0];
 }
 
-// --- [NEW] Strategy Calculation Logic ---
 
 /**
- * Calculates the average price of a single option leg by running the Binomial model
- * across the range of risk-free interest rates.
- * @returns {number} The average calculated premium for the leg.
+ * Calculates a price range for an option by running the Binomial model
+ * against a list of different risk-free interest rates.
+ * @returns {string} A string representing the min-max price range, e.g., "1.23-1.45".
  */
-function calculateLegValue(leg, S, T, sigma) {
-    const isCall = leg.type === 'call';
-    const prices = RISK_FREE_RATES.map(r => coxRossRubinstein(isCall, S, leg.K, T, sigma, r));
+function calculateOptionPriceRange(isCall, S, K, T, sigma) {
+    // [MODIFIED] Using the new, more accurate Binomial model.
+    const prices = RISK_FREE_RATES.map(r => coxRossRubinstein(isCall, S, K, T, sigma, r));
     const minPrice = Math.max(0, Math.min(...prices));
     const maxPrice = Math.max(0, Math.max(...prices));
-    // We return the average for combining into a strategy value
-    return (minPrice + maxPrice) / 2;
+    return `${minPrice.toFixed(2)}-${maxPrice.toFixed(2)}`;
 }
 
 /**
- * Calculates the total value of a strategy (a collection of legs) at a specific stock price and time.
- * @returns {number} The total value of the strategy.
- */
-function calculateStrategyValue(strategy, S, T, sigma) {
-    let totalValue = 0;
-    for (const leg of strategy.legs) {
-        const legValue = calculateLegValue(leg, S, T, sigma);
-        if (leg.action === 'buy') {
-            totalValue += legValue;
-        } else { // 'sell'
-            totalValue -= legValue;
-        }
-    }
-    return totalValue;
-}
-
-
-/**
- * [MODIFIED] Generates the full P/L data set for an options strategy table.
- * @param {object} params - Input parameters for the calculation, including the strategy object.
- * @returns {object} A structured object containing headers, rows, and initial cost.
+ * Generates the full data set for the options pricing table.
+ * @param {object} params - Input parameters for the calculation.
+ * @returns {object} A structured object containing headers and rows for the table.
  */
 function generateTableData(params) {
-    // [MODIFIED] Destructure strategy object instead of single leg params
-    const { S, sigma, currentDateTime, expirationDateTime, priceIncrement, strategy } = params;
-    
-    const allStrikePrices = strategy.legs.map(leg => leg.K);
+    const { S, K, sigma, currentDateTime, expirationDateTime, priceIncrement, optionType } = params;
 
-    const timeToExpirationInitial = (expirationDateTime - currentDateTime) / (1000 * 60 * 60 * 24 * 365.25);
-    if (timeToExpirationInitial <= 0) {
+    // 1. Calculate Time to Expiration (T) in years
+    const timeToExpiration = (expirationDateTime - currentDateTime) / (1000 * 60 * 60 * 24 * 365.25);
+    if (timeToExpiration <= 0) {
         return { error: "Expiration must be in the future." };
     }
 
-    // [MODIFIED] Pass all strike prices to generate a comprehensive range
-    const stockPriceHeaders = calculateStockPriceRange(S, allStrikePrices, priceIncrement);
+    // 2. Generate Stock Price Headers for the table rows using the advanced logic
+    const stockPriceHeaders = calculateStockPriceRange(S, K, priceIncrement);
 
-    // This logic correctly calculates time increments within market hours.
+    // 3. This logic now correctly calculates time increments within market hours.
     const timeHeaders = [];
     const incrementsCount = 13;
+    
     let totalTradingMinutes = 0;
     let tempDate = new Date(currentDateTime);
+    
+    // Calculate total trading minutes accurately
     while (tempDate < expirationDateTime) {
         if (isTradingDay(tempDate)) {
             const startOfDay = new Date(tempDate);
-            startOfDay.setUTCHours(13, 30, 0, 0);
+            startOfDay.setUTCHours(13, 30, 0, 0); // 9:30 AM ET in UTC (approx)
             const endOfDay = new Date(tempDate);
-            endOfDay.setUTCHours(20, 0, 0, 0);
+            endOfDay.setUTCHours(20, 0, 0, 0); // 4:00 PM ET in UTC (approx)
+
             if (tempDate < endOfDay) {
                 const startCalc = tempDate < startOfDay ? startOfDay : tempDate;
                 const endCalc = expirationDateTime < endOfDay ? expirationDateTime : endOfDay;
@@ -278,17 +274,21 @@ function generateTableData(params) {
         tempDate.setUTCDate(tempDate.getUTCDate() + 1);
         tempDate.setUTCHours(0, 0, 0, 0);
     }
+
     const incrementMinutes = totalTradingMinutes > 0 ? totalTradingMinutes / (incrementsCount - 1) : 0;
+    
     for (let i = 0; i < incrementsCount; i++) {
         const minutesToAdd = i * incrementMinutes;
         let nextTime = new Date(currentDateTime);
         let remainingMinutes = minutesToAdd;
-        let safetyBreak = 1000;
+
+        let safetyBreak = 1000; // Prevent infinite loops
         while (remainingMinutes > 0 && safetyBreak > 0) {
             const startOfDay = new Date(nextTime);
             startOfDay.setUTCHours(13, 30, 0, 0);
             const endOfDay = new Date(nextTime);
             endOfDay.setUTCHours(20, 0, 0, 0);
+
             if (isTradingDay(nextTime) && nextTime >= startOfDay && nextTime < endOfDay) {
                 const minutesLeftInDay = (endOfDay - nextTime) / (1000 * 60);
                 if (remainingMinutes <= minutesLeftInDay) {
@@ -301,7 +301,7 @@ function generateTableData(params) {
             } else {
                 nextTime.setUTCDate(nextTime.getUTCDate() + 1);
                 nextTime.setUTCHours(13, 30, 0, 0);
-                if (!isTradingDay(nextTime)) {
+                 if (!isTradingDay(nextTime)) {
                     continue;
                 }
             }
@@ -310,34 +310,23 @@ function generateTableData(params) {
         timeHeaders.push(nextTime);
     }
 
-    // [NEW] Calculate the initial cost (net debit/credit) of the strategy
-    const initialCost = calculateStrategyValue(strategy, S, timeToExpirationInitial, sigma);
 
-    // [MODIFIED] Generate table rows with Profit/Loss data for the strategy
+    // 4. Generate the table rows with premium data based on the selected option type
+    const isCall = optionType === 'call';
     const rows = stockPriceHeaders.map(stockPrice => {
-        const values = timeHeaders.map(timeHeader => {
+        const premiums = timeHeaders.map(timeHeader => {
             const T_increment = (expirationDateTime.getTime() - timeHeader.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-            const projectedValue = calculateStrategyValue(strategy, stockPrice, T_increment, sigma);
-            const profitLoss = projectedValue - initialCost;
-            return profitLoss.toFixed(2); // Each cell is now a P/L value
+            return calculateOptionPriceRange(isCall, stockPrice, K, T_increment, sigma);
         });
-        return { stockPrice, values }; // Changed 'premiums' to 'values'
+        return { stockPrice, premiums };
     });
 
-    // [MODIFIED] Return the initial cost along with the table data
-    return { 
-        stockPriceHeaders, 
-        timeHeaders, 
-        rows,
-        initialCost: {
-            value: Math.abs(initialCost),
-            type: initialCost > 0 ? 'Debit' : 'Credit'
-        }
-    };
+    return { stockPriceHeaders, timeHeaders, rows };
 }
 
 
 module.exports = {
     getCalculationTime,
+    calculateOptionPriceRange,
     generateTableData,
 };

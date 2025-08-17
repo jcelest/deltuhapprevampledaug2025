@@ -13,60 +13,52 @@
     return `${year}-${month}-${day}`;
   }
 
-  // Protect the route
-  onMount(() => {
-    // Note: In a real app, you might use a store that checks the token's validity.
-    // For this example, we'll assume if a token exists, the user is authenticated.
-    // if (!$authToken) {
-    //   goto('/login');
-    // }
-  });
-
   // --- State Variables ---
 
-  // Input state now defaults to empty values for a clean slate.
+  // Input state
   let ticker = '';
-  let expiration = getTodayDateString(); // Default to today's date
+  let expiration = getTodayDateString();
   let strikePrice = '';
   
-  // Data state that will be fetched from our backend
+  // Data state fetched from backend
   let stockPrice = '';
   let impliedVolatility = '';
 
   // State for advanced options
   let optionType = 'call';
-  let priceIncrement = '1.0';
+  
+  // State for the new price increment slider
+  const incrementSteps = [0.5, 1.0, 2.5, 5.0, 10.0];
+  let priceIncrementIndex = 1; // Default to 1.0 (the second item in the array)
+  let priceIncrement = incrementSteps[priceIncrementIndex];
+  let userOverrodeIncrement = false; // Tracks if the user has manually changed the increment
 
-  // App state to manage UI feedback
+  // App state for UI feedback
   let isLoading = false;
   let error = '';
-  let calculationResults = null;
-  
-  // State for the informational message
+  let calculationResults = null; // Raw data from the backend
+  let filteredCalculationResults = null; // [NEW] Filtered data for rendering
   let infoMessage = '';
 
-  // A reference to the results container for auto-scrolling
+  // DOM reference for auto-scrolling
   let resultsSection;
   
-  // State for the heatmap calculation
+  // State for heatmaps
   let heatmapMaxDifference = 0;
-
-  // State for the Entry Price Analysis feature
   let isAnalyzing = false;
   let entryPrice = '';
   let entryPriceHeatmapMax = 0;
 
-  // State to hold the coordinates of the single "current premium" cell
+  // State for the "current premium" cell highlight
   let currentPremiumCoords = null;
 
-  // The URL of our backend server
-  // Make sure to set VITE_BACKEND_URL in your .env file for production
+  // Backend URL
   const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
   // --- Functions ---
 
   /**
-   * Clears any existing results and messages.
+   * Clears existing results and messages for a completely new calculation.
    */
   function clearResults() {
       calculationResults = null;
@@ -74,11 +66,12 @@
       error = '';
       isAnalyzing = false;
       entryPrice = '';
-      currentPremiumCoords = null; // Reset the coordinates
+      // Reset the override flag so auto-selection can work for the *next* ticker
+      userOverrodeIncrement = false;
   }
 
   /**
-   * A single function to handle the entire calculation process.
+   * Handles the entire calculation process for a new ticker.
    */
   async function handleCalculate() {
     if (!ticker || !strikePrice || !expiration) {
@@ -86,21 +79,20 @@
         return;
     }
     isLoading = true;
+    // Clear previous results *before* fetching new data for a new ticker
     clearResults();
     
     try {
-        // Step 1: Fetch market data (stock price and volatility)
+        // Step 1: Fetch market data
         const marketDataResponse = await axios.post(`${API_URL}/api/fetch-market-data`, { ticker });
         
-        // Use user-provided values as overrides if they exist, otherwise use fetched data.
         const finalStockPrice = stockPrice || marketDataResponse.data.currentStockPrice;
         const finalImpliedVolatility = impliedVolatility || marketDataResponse.data.impliedVolatility;
 
-        // Update the input fields with the fetched data for transparency
         stockPrice = finalStockPrice;
         impliedVolatility = finalImpliedVolatility;
 
-        // Step 2: Immediately proceed to generate the option table with all necessary parameters.
+        // Step 2: Generate the option table
         const params = {
             stockPrice: finalStockPrice,
             strikePrice,
@@ -110,16 +102,10 @@
             priceIncrement: parseFloat(priceIncrement)
         };
         const calculationResponse = await axios.post(`${API_URL}/api/calculate`, params);
+        // This assignment will trigger the reactive block below to filter the data
         calculationResults = calculationResponse.data;
 
-        // Find the coordinates of the cell for the current stock price and current time.
-        const currentPriceRowIndex = calculationResults.tableData.rows.findIndex(row => Math.abs(row.stockPrice - stockPrice) < 0.01);
-        if (currentPriceRowIndex !== -1) {
-            // The current premium is always in the first time column (j=0) of the current price row.
-            currentPremiumCoords = { row: currentPriceRowIndex, col: 0 };
-        }
-
-        // Set the informational message based on market status.
+        // Set informational message
         const asOfTime = new Date(calculationResponse.data.calculationTime);
         if (calculationResponse.data.isMarketOpen) {
             infoMessage = `Prices calculated in real-time as of ${asOfTime.toLocaleString()}.`;
@@ -127,7 +113,7 @@
             infoMessage = `The market is currently closed. Prices are based on the last market close: ${asOfTime.toLocaleString()}.`;
         }
 
-        // Wait for the DOM to update, then smoothly scroll to the results.
+        // Scroll to results
         await tick();
         if (resultsSection) {
           const topOffset = resultsSection.getBoundingClientRect().top + window.scrollY - 80;
@@ -143,35 +129,49 @@
   }
   
   /**
-   * A function to re-calculate only if results are already visible.
-   * This is triggered when changing Option Type or Price Increments.
+   * Re-calculates the table using existing data when a control (like the slider) is changed.
    */
-  function reCalculate() {
-    if (calculationResults) {
-      handleCalculate();
+  async function reCalculate() {
+    if (!calculationResults) return; // Don't do anything if there are no results yet
+
+    isLoading = true;
+    error = ''; // Clear previous errors, but not the whole result set
+
+    try {
+        // Use existing data, just send the new increment/optionType
+        const params = {
+            stockPrice: stockPrice, // Use the already fetched price
+            strikePrice,
+            expirationDate: expiration,
+            volatility: impliedVolatility, // Use the already fetched volatility
+            optionType,
+            priceIncrement: parseFloat(priceIncrement)
+        };
+        const calculationResponse = await axios.post(`${API_URL}/api/calculate`, params);
+        
+        // This assignment will trigger the reactive block below to re-filter the new data
+        calculationResults = calculationResponse.data;
+        
+    } catch (err) {
+        error = 'Failed to recalculate option data.';
+        console.error(err);
+    } finally {
+        isLoading = false;
     }
   }
 
-  /**
-   * A helper function to parse the premium range string (e.g., "1.23-1.45") into an average number.
-   */
+  // --- Helper Functions (unchanged) ---
   function getAveragePremium(premiumRange) {
       const parts = premiumRange.split('-').map(Number);
       return (parts[0] + parts[1]) / 2;
   }
   
-  /**
-   * Checks if the user's entry price is within the given premium range.
-   */
   function isBreakeven(premiumRange, priceToAnalyze) {
       if (!isAnalyzing || !priceToAnalyze) return false;
       const [min, max] = premiumRange.split('-').map(Number);
       return priceToAnalyze >= min && priceToAnalyze <= max;
   }
 
-  /**
-   * Calculates the percentage change from the entry price to the projected average premium.
-   */
   function getPercentageChange(premiumRange, priceToAnalyze) {
       if (!isAnalyzing || !priceToAnalyze) return { text: '', isProfit: false };
       const avgPremium = getAveragePremium(premiumRange);
@@ -184,9 +184,6 @@
       };
   }
 
-  /**
-   * Determines if a stock price is "In the Money" for the current option type.
-   */
   function isITM(currentStockPrice, currentStrikePrice, currentOptionType) {
       if (currentOptionType === 'call') {
           return currentStockPrice > currentStrikePrice;
@@ -195,21 +192,16 @@
       }
   }
 
-  /**
-   * Calculates the dynamic style for the heatmap based on the active mode (ITM/OTM or Entry Price Analysis).
-   */
   function getHeatmapStyle(currentPrice, premium, analysisMode, priceToAnalyze) {
-    // Entry Price Analysis Mode
     if (analysisMode && priceToAnalyze > 0) {
         const avgPremium = getAveragePremium(premium);
         const difference = avgPremium - priceToAnalyze;
         const intensity = Math.min(Math.abs(difference) / entryPriceHeatmapMax, 1);
-        const opacity = 0.1 + intensity * 0.4; // Opacity from 10% to 50%
+        const opacity = 0.1 + intensity * 0.4;
 
-        if (difference > 0) return `background-color: rgba(34, 197, 94, ${opacity});`; // Green for profit
-        if (difference < 0) return `background-color: rgba(239, 68, 68, ${opacity});`; // Red for loss
+        if (difference > 0) return `background-color: rgba(34, 197, 94, ${opacity});`;
+        if (difference < 0) return `background-color: rgba(239, 68, 68, ${opacity});`;
 
-    // Default ITM/OTM Heatmap Mode
     } else {
         if (!heatmapMaxDifference) return '';
         const difference = currentPrice - strikePrice;
@@ -217,19 +209,16 @@
         const opacity = 0.1 + intensity * 0.4;
 
         if (optionType === 'call') {
-            if (difference > 0) return `background-color: rgba(34, 197, 94, ${opacity});`; // Green for ITM
-            if (difference < 0) return `background-color: rgba(239, 68, 68, ${opacity});`; // Red for OTM
+            if (difference > 0) return `background-color: rgba(34, 197, 94, ${opacity});`;
+            if (difference < 0) return `background-color: rgba(239, 68, 68, ${opacity});`;
         } else { // 'put'
-            if (difference < 0) return `background-color: rgba(34, 197, 94, ${opacity});`; // Green for ITM
-            if (difference > 0) return `background-color: rgba(239, 68, 68, ${opacity});`; // Red for OTM
+            if (difference < 0) return `background-color: rgba(34, 197, 94, ${opacity});`;
+            if (difference > 0) return `background-color: rgba(239, 68, 68, ${opacity});`;
         }
     }
     return '';
   }
 
-  /**
-   * Formats a date object to include the time (e.g., "3:00 PM").
-   */
   function formatHeaderTime(dateString) {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('en-US', {
@@ -238,9 +227,6 @@
       }).format(date);
   }
 
-  /**
-   * Formats a date object to get the abbreviated day of the week (e.g., "Mon").
-   */
   function formatHeaderDay(dateString) {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
@@ -249,21 +235,43 @@
 
   // --- Reactive Statements ---
 
-  // Ensure the ticker is always uppercase and contains only letters.
   $: ticker = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
 
-  // This block recalculates heatmap maximums whenever the results or analysis mode change.
+  // Update priceIncrement when the slider index changes
+  $: priceIncrement = incrementSteps[priceIncrementIndex];
+
+  // This block now only runs if the user has NOT manually set the increment
+  $: if (stockPrice && !calculationResults && !userOverrodeIncrement) {
+      const price = parseFloat(stockPrice);
+      if (price >= 1 && price <= 10) priceIncrementIndex = 0; // 0.5
+      else if (price >= 11 && price <= 99) priceIncrementIndex = 1; // 1.0
+      else if (price >= 100 && price <= 199) priceIncrementIndex = 2; // 2.5
+      else if (price >= 200 && price <= 999) priceIncrementIndex = 3; // 5.0
+      else if (price >= 1000) priceIncrementIndex = 4; // 10.0
+  }
+
+  // [MODIFIED] This central reactive block now filters data and prepares it for rendering.
   $: {
     if (calculationResults) {
+        // Create a new object for the filtered data to avoid modifying the original
+        const filteredData = {
+            ...calculationResults,
+            tableData: {
+                ...calculationResults.tableData,
+                // THE FIX: Filter out rows with negative stock prices
+                rows: calculationResults.tableData.rows.filter(row => row.stockPrice >= 0)
+            }
+        };
+
         // For the default ITM/OTM heatmap
-        const prices = calculationResults.tableData.rows.map(row => row.stockPrice);
+        const prices = filteredData.tableData.rows.map(row => row.stockPrice);
         const maxDiff = Math.max(...prices.map(p => Math.abs(p - strikePrice)));
         heatmapMaxDifference = maxDiff > 0 ? maxDiff : 1;
 
         // For the entry price analysis heatmap
         if (isAnalyzing && entryPrice > 0) {
             let maxPremiumDiff = 0;
-            calculationResults.tableData.rows.forEach(row => {
+            filteredData.tableData.rows.forEach(row => {
                 row.premiums.forEach(p => {
                     const avg = getAveragePremium(p);
                     maxPremiumDiff = Math.max(maxPremiumDiff, Math.abs(avg - entryPrice));
@@ -273,17 +281,21 @@
         } else {
             entryPriceHeatmapMax = 0;
         }
-    }
-  }
 
-  // This block automatically selects a reasonable price increment based on the stock price.
-  $: if (stockPrice && !calculationResults) {
-      const price = parseFloat(stockPrice);
-      if (price >= 1 && price <= 10) priceIncrement = '0.5';
-      else if (price >= 11 && price <= 99) priceIncrement = '1.0';
-      else if (price >= 100 && price <= 199) priceIncrement = '2.5';
-      else if (price >= 200 && price <= 999) priceIncrement = '5.0';
-      else if (price >= 1000) priceIncrement = '10.0';
+        // Recalculate the current premium coordinates based on the filtered data
+        const newCurrentPriceRowIndex = filteredData.tableData.rows.findIndex(row => Math.abs(row.stockPrice - stockPrice) < 0.01);
+        if (newCurrentPriceRowIndex !== -1) {
+            currentPremiumCoords = { row: newCurrentPriceRowIndex, col: 0 };
+        } else {
+            currentPremiumCoords = null;
+        }
+
+        // Assign the fully processed, filtered data to a new variable for rendering
+        filteredCalculationResults = filteredData;
+
+    } else {
+        filteredCalculationResults = null; // Clear it when there are no results
+    }
   }
 
 </script>
@@ -335,29 +347,41 @@
               <option value="put">Puts</option>
             </select>
         </label>
-        <label class="flex flex-col space-y-2">
-            <span class="font-semibold text-gray-400">Price Increments</span>
-            <select bind:value={priceIncrement} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition h-[52px]">
-              <option value="0.5">0.50</option>
-              <option value="1.0">1.00</option>
-              <option value="2.5">2.50</option>
-              <option value="5.0">5.00</option>
-              <option value="10.0">10.00</option>
-            </select>
-        </label>
+        
+        <!-- Price Increment Slider -->
+        <div class="flex flex-col space-y-2">
+            <div class="flex justify-between items-center">
+                <span class="font-semibold text-gray-400">Price Increments</span>
+                <span class="font-bold text-indigo-400 text-lg bg-gray-900 px-3 py-1 rounded-md">{priceIncrement.toFixed(2)}</span>
+            </div>
+            <input 
+                type="range" 
+                min="0" 
+                max={incrementSteps.length - 1} 
+                step="1"
+                bind:value={priceIncrementIndex}
+                on:change={() => {
+                    userOverrodeIncrement = true;
+                    reCalculate();
+                }}
+                class="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg slider-thumb"
+            >
+        </div>
+
         <button on:click={handleCalculate} disabled={isLoading} class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-base sm:text-lg h-[52px] disabled:bg-indigo-800 disabled:cursor-not-allowed">
             {isLoading ? 'Calculating...' : 'Calculate'}
         </button>
     </div>
   </div>
 
+  <!-- [MODIFIED] Results section now uses filteredCalculationResults -->
   {#if error}
     <div class="mt-8 bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center">
         {error}
     </div>
   {/if}
 
-  {#if calculationResults}
+  {#if filteredCalculationResults}
     <div class="mt-12 space-y-8" bind:this={resultsSection}>
       
       {#if infoMessage}
@@ -387,10 +411,10 @@
       <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 text-center">
           {#if optionType === 'call'}
             <h3 class="text-lg sm:text-xl font-semibold text-gray-400">Current Call Price</h3>
-            <p class="text-2xl sm:text-3xl font-sans text-white mt-2">{calculationResults.callPriceRange}</p>
+            <p class="text-2xl sm:text-3xl font-sans text-white mt-2">{filteredCalculationResults.callPriceRange}</p>
           {:else}
             <h3 class="text-lg sm:text-xl font-semibold text-gray-400">Current Put Price</h3>
-            <p class="text-2xl sm:text-3xl font-sans text-white mt-2">{calculationResults.putPriceRange}</p>
+            <p class="text-2xl sm:text-3xl font-sans text-white mt-2">{filteredCalculationResults.putPriceRange}</p>
           {/if}
       </div>
 
@@ -405,7 +429,7 @@
                 <thead class="bg-gray-700/50">
                     <tr>
                         <th class="sticky left-0 bg-gray-800 p-2 sm:p-4 font-semibold tracking-wider text-white whitespace-nowrap z-20">Stock Price</th>
-                        {#each calculationResults.tableData.timeHeaders as timeHeader}
+                        {#each filteredCalculationResults.tableData.timeHeaders as timeHeader}
                             <th class="p-2 sm:p-4 font-semibold tracking-wider text-white text-center whitespace-nowrap">
                                 <div class="flex flex-col">
                                     <span class="text-xs text-indigo-400 font-bold">{formatHeaderDay(timeHeader)}</span>
@@ -417,7 +441,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {#each calculationResults.tableData.rows as row, i}
+                    {#each filteredCalculationResults.tableData.rows as row, i}
                         {@const isStrike = Math.abs(row.stockPrice - strikePrice) < 0.01}
                         {@const isCurrent = Math.abs(row.stockPrice - stockPrice) < 0.01}
                         <tr 
@@ -445,39 +469,37 @@
                                   class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
                                   style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
                                 >
-                                  {#if isAnalyzing && entryPrice > 0}
-                                    <div class="flex flex-col justify-center items-center">
-                                      {#if isBreakevenCell}
-                                        <span class="breakeven-label">Breakeven</span>
-                                      {:else}
-                                        <span class="percentage-label" class:profit={percentageChange.isProfit} class:loss={!percentageChange.isProfit}>
-                                          {percentageChange.text}
-                                        </span>
-                                      {/if}
-                                      <span class:breakeven-text={isBreakevenCell}>{premium}</span>
-                                    </div>
-                                  {:else if isCurrentPremiumCell}
-                                    <div class="flex flex-col justify-center items-center">
-                                        <span class="current-label">Current</span>
-                                        <span class="current-text">{premium}</span>
-                                    </div>
-                                  {:else}
-                                    <span>{premium}</span>
-                                  {/if}
+                                    {#if isAnalyzing && entryPrice > 0}
+                                      <div class="flex flex-col justify-center items-center">
+                                          {#if isBreakevenCell}
+                                            <span class="breakeven-label">Breakeven</span>
+                                          {:else}
+                                            <span class="percentage-label" class:profit={percentageChange.isProfit} class:loss={!percentageChange.isProfit}>
+                                              {percentageChange.text}
+                                            </span>
+                                          {/if}
+                                          <span class:breakeven-text={isBreakevenCell}>{premium}</span>
+                                      </div>
+                                    {:else if isCurrentPremiumCell}
+                                      <div class="flex flex-col justify-center items-center">
+                                          <span class="current-label">Current</span>
+                                          <span class="current-text">{premium}</span>
+                                      </div>
+                                    {:else}
+                                      <span>{premium}</span>
+                                    {/if}
                                 </td>
                             {/each}
                         </tr>
                         
-                        <!-- This block checks if the line between the current row and the next row is the border between ITM and OTM. -->
-                        {#if i < calculationResults.tableData.rows.length - 1}
+                        {#if i < filteredCalculationResults.tableData.rows.length - 1}
                             {@const regionAboveIsITM = isITM(row.stockPrice, strikePrice, optionType)}
-                            {@const regionBelowIsITM = isITM(calculationResults.tableData.rows[i + 1].stockPrice, strikePrice, optionType)}
+                            {@const regionBelowIsITM = isITM(filteredCalculationResults.tableData.rows[i + 1].stockPrice, strikePrice, optionType)}
                             
                             {#if regionAboveIsITM !== regionBelowIsITM}
                                 <tr class="itm-otm-separator-row">
-                                    <td colspan={calculationResults.tableData.timeHeaders.length + 1}>
+                                    <td colspan={filteredCalculationResults.tableData.timeHeaders.length + 1}>
                                         <div class="separator-content">
-                                            <!-- Left side of separator (describes region ABOVE - lower stock prices) -->
                                             <div class="flex items-center gap-2">
                                                 <svg class="h-4 w-4" class:itm-arrow={optionType === 'put'} class:otm-arrow={optionType === 'call'} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
                                                 {#if optionType === 'call'}
@@ -489,7 +511,6 @@
 
                                             <span class="separator-line" class:call={optionType === 'call'} class:put={optionType === 'put'}></span>
 
-                                            <!-- Right side of separator (describes region BELOW - higher stock prices) -->
                                             <div class="flex items-center gap-2">
                                                 {#if optionType === 'call'}
                                                     <span class="separator-text itm-text">In the Money</span>
@@ -513,6 +534,33 @@
 </div>
 
 <style>
+  /* [NEW] Custom styles for the range slider */
+  .slider-thumb::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #6366f1; /* indigo-500 */
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #e5e7eb; /* gray-200 */
+    transition: background-color 0.2s;
+  }
+  .slider-thumb::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #6366f1;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #e5e7eb;
+  }
+  .slider-thumb:hover::-webkit-slider-thumb {
+    background: #4f46e5; /* indigo-600 */
+  }
+  .slider-thumb:hover::-moz-range-thumb {
+    background: #4f46e5;
+  }
+
   /* Custom styles for the table's horizontal scrollbar */
   .custom-scrollbar::-webkit-scrollbar {
     height: 12px;
@@ -523,7 +571,7 @@
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: #4f46e5; /* bg-indigo-600 */
     border-radius: 10px;
-    border: 3px solid #1f2937; /* Creates padding around thumb */
+    border: 3px solid #1f2937;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: #4338ca; /* bg-indigo-700 */
@@ -575,7 +623,6 @@
       line-height: 1.2;
   }
 
-  /* Responsive adjustments for the labels */
   @media (min-width: 640px) {
     .breakeven-label, .percentage-label, .current-label {
       font-size: 0.65rem;
@@ -599,12 +646,11 @@
       margin: 0 1rem;
       border-radius: 99px;
   }
-  /* [NEW] Dynamic gradient for the separator line */
   .separator-line.call {
-    background: linear-gradient(to right, #ef4444, #22c55e); /* red to green */
+    background: linear-gradient(to right, #ef4444, #22c55e);
   }
   .separator-line.put {
-    background: linear-gradient(to right, #22c55e, #ef4444); /* green to red */
+    background: linear-gradient(to right, #22c55e, #ef4444);
   }
 
   .separator-text {
@@ -613,17 +659,16 @@
       text-transform: uppercase;
   }
   
-  /* [NEW] Color coding for text and arrows */
   .itm-text {
-    color: #4ade80; /* green-400 */
+    color: #4ade80;
   }
   .otm-text {
-    color: #f87171; /* red-400 */
+    color: #f87171;
   }
   .itm-arrow {
-    color: #4ade80; /* green-400 */
+    color: #4ade80;
   }
   .otm-arrow {
-    color: #f87171; /* red-400 */
+    color: #f87171;
   }
 </style>

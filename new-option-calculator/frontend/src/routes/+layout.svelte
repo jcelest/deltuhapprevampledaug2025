@@ -1,6 +1,9 @@
 <script>
-  // Import the global stylesheet. This is the crucial step.
-  import '../app.css'; 
+  // Import the global stylesheet.
+  import '../app.css';
+  
+  // Import the `page` store to access the current URL.
+  import { page } from '$app/stores';
 
   import { authToken } from '../stores/authStore.js';
   import { goto } from '$app/navigation';
@@ -32,8 +35,22 @@
         <!-- Use an #if block to show different links based on login state -->
         {#if $authToken}
           <!-- This content shows if the user IS logged in -->
-          <a href="/dashboard" class="text-sm sm:text-base text-gray-300 hover:text-white transition-colors font-medium whitespace-nowrap">Dashboard</a>
-          <a href="/terminal" class="text-sm sm:text-base text-gray-300 hover:text-white transition-colors font-medium whitespace-nowrap">Terminal</a>
+          
+          <!-- [MODIFIED] Link now has a purple underline indicator when active -->
+          <a
+            href="/dashboard"
+            class="relative text-sm sm:text-base text-gray-300 hover:text-indigo-400 transition-colors font-medium whitespace-nowrap py-2"
+            class:text-indigo-400={$page.url.pathname === '/dashboard'}
+          >
+            Dashboard
+            <!-- This span is the animated underline -->
+            <span
+              class="absolute bottom-0 left-0 block h-0.5 bg-indigo-500 transition-all duration-300"
+              class:w-full={$page.url.pathname === '/dashboard'}
+              class:w-0={!($page.url.pathname === '/dashboard')}
+            ></span>
+          </a>
+          
           <button 
             on:click={handleLogout}
             class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-3 sm:px-4 rounded-md transition-all duration-200 ease-in-out transform hover:scale-105 text-sm sm:text-base"
@@ -60,7 +77,7 @@
     <slot />
   </main>
 
-  <!-- [NEW] Global Footer -->
+  <!-- Global Footer -->
   <footer class="bg-gray-800/50 border-t border-gray-700 mt-auto">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-gray-400 text-sm">
       <p>&copy; {new Date().getFullYear()} Deltuh. All Rights Reserved.</p>

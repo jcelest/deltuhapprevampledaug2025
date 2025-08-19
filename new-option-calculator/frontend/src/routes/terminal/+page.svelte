@@ -1,674 +1,907 @@
 <script>
-  import axios from 'axios';
-  import { onMount, tick } from 'svelte';
-  import { goto } from '$app/navigation';
-  import { authToken } from '../../stores/authStore.js';
-
-  // This function formats a date object to 'YYYY-MM-DD' for the input field.
-  function getTodayDateString() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  // --- State Variables ---
-
-  // Input state
-  let ticker = '';
-  let expiration = getTodayDateString();
-  let strikePrice = '';
+  import { onMount } from 'svelte';
+  import { writable } from 'svelte/store';
   
-  // Data state fetched from backend
-  let stockPrice = '';
-  let impliedVolatility = '';
-
-  // State for advanced options
-  let optionType = 'call';
+  // Import components
+  import CalculationEngine from '../../lib/components/CalculationEngine.svelte';
+  import PricingMatrix from '../../lib/components/PricingMatrix.svelte';
+  import GreeksDashboard from '../../lib/components/GreeksDashboard.svelte';
+  import MarketData from '../../lib/components/MarketData.svelte';
+  import ComponentSelector from '../../lib/components/ComponentSelector.svelte';
   
-  // State for the new price increment slider
-  const incrementSteps = [0.5, 1.0, 2.5, 5.0, 10.0];
-  let priceIncrementIndex = 1; // Default to 1.0 (the second item in the array)
-  let priceIncrement = incrementSteps[priceIncrementIndex];
-  let userOverrodeIncrement = false; // Tracks if the user has manually changed the increment
+  // Component registry
+  const components = {
+    CalculationEngine,
+    PricingMatrix,
+    GreeksDashboard,
+    MarketData
+  };
 
-  // App state for UI feedback
-  let isLoading = false;
-  let error = '';
-  let calculationResults = null; // Raw data from the backend
-  let filteredCalculationResults = null; // [NEW] Filtered data for rendering
-  let infoMessage = '';
+  const componentRegistry = {
+    CalculationEngine: { title: 'Calculation Engine', defaultSize: { w: 12, h: 8 } },
+    PricingMatrix: { title: 'Pricing Matrix', defaultSize: { w: 12, h: 4 } },
+    GreeksDashboard: { title: 'Greeks Dashboard', defaultSize: { w: 6, h: 6 } },
+    MarketData: { title: 'Market Data', defaultSize: { w: 6, h: 6 } }
+  };
 
-  // DOM reference for auto-scrolling
-  let resultsSection;
-  
-  // State for heatmaps
-  let heatmapMaxDifference = 0;
-  let isAnalyzing = false;
-  let entryPrice = '';
-  let entryPriceHeatmapMax = 0;
+  // Layout state - start with only CalculationEngine
+  let layout = writable([
+    { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 8, config: {} }
+  ]);
 
-  // State for the "current premium" cell highlight
-  let currentPremiumCoords = null;
+  let isEditMode = writable(false);
+  let showComponentSelector = false;
+  let calculationResults = null;
+  let inputData = {};
 
-  // Backend URL
-  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+  // Enhanced drag and resize state
+  let activeAction = null;
+  let activeComponent = null;
+  let dragStart = { x: 0, y: 0 };
+  let componentStart = { x: 0, y: 0, w: 0, h: 0 };
+  let gridContainer = null;
+  let isDragging = false;
 
-  // --- Functions ---
+  // Grid configuration
+  const GRID_COLS = 12;
+  const MIN_CELL_HEIGHT = 80;
+  const MIN_COMPONENT_WIDTH = 2;
+  const MIN_COMPONENT_HEIGHT = 2;
 
-  /**
-   * Clears existing results and messages for a completely new calculation.
-   */
-  function clearResults() {
-      calculationResults = null;
-      infoMessage = '';
-      error = '';
-      isAnalyzing = false;
-      entryPrice = '';
-      // Reset the override flag so auto-selection can work for the *next* ticker
-      userOverrodeIncrement = false;
-  }
+  // Mobile gesture state
+  let initialPinchDistance = 0;
+  let isMultiTouch = false;
 
-  /**
-   * Handles the entire calculation process for a new ticker.
-   */
-  async function handleCalculate() {
-    if (!ticker || !strikePrice || !expiration) {
-        error = 'Please fill in Ticker, Strike Price, and Expiration Date.';
-        return;
-    }
-    isLoading = true;
-    // Clear previous results *before* fetching new data for a new ticker
-    clearResults();
+  onMount(() => {
+    loadLayout();
     
+    // Add global event listeners for drag operations
+    document.addEventListener('mousemove', handleGlobalMouseMove, { passive: false });
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+    document.addEventListener('touchend', handleGlobalTouchEnd);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('touchmove', handleGlobalTouchMove);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+    };
+  });
+
+  function loadLayout() {
     try {
-        // Step 1: Fetch market data
-        const marketDataResponse = await axios.post(`${API_URL}/api/fetch-market-data`, { ticker });
-        
-        const finalStockPrice = stockPrice || marketDataResponse.data.currentStockPrice;
-        const finalImpliedVolatility = impliedVolatility || marketDataResponse.data.impliedVolatility;
-
-        stockPrice = finalStockPrice;
-        impliedVolatility = finalImpliedVolatility;
-
-        // Step 2: Generate the option table
-        const params = {
-            stockPrice: finalStockPrice,
-            strikePrice,
-            expirationDate: expiration,
-            volatility: finalImpliedVolatility,
-            optionType,
-            priceIncrement: parseFloat(priceIncrement)
-        };
-        const calculationResponse = await axios.post(`${API_URL}/api/calculate`, params);
-        // This assignment will trigger the reactive block below to filter the data
-        calculationResults = calculationResponse.data;
-
-        // Set informational message
-        const asOfTime = new Date(calculationResponse.data.calculationTime);
-        if (calculationResponse.data.isMarketOpen) {
-            infoMessage = `Prices calculated in real-time as of ${asOfTime.toLocaleString()}.`;
-        } else {
-            infoMessage = `The market is currently closed. Prices are based on the last market close: ${asOfTime.toLocaleString()}.`;
-        }
-
-        // Scroll to results
-        await tick();
-        if (resultsSection) {
-          const topOffset = resultsSection.getBoundingClientRect().top + window.scrollY - 80;
-          window.scrollTo({ top: topOffset, behavior: 'smooth' });
-        }
-
-    } catch (err) {
-        error = 'Failed to calculate option data. Please check the ticker and try again.';
-        console.error(err);
-    } finally {
-        isLoading = false;
-    }
-  }
-  
-  /**
-   * Re-calculates the table using existing data when a control (like the slider) is changed.
-   */
-  async function reCalculate() {
-    if (!calculationResults) return; // Don't do anything if there are no results yet
-
-    isLoading = true;
-    error = ''; // Clear previous errors, but not the whole result set
-
-    try {
-        // Use existing data, just send the new increment/optionType
-        const params = {
-            stockPrice: stockPrice, // Use the already fetched price
-            strikePrice,
-            expirationDate: expiration,
-            volatility: impliedVolatility, // Use the already fetched volatility
-            optionType,
-            priceIncrement: parseFloat(priceIncrement)
-        };
-        const calculationResponse = await axios.post(`${API_URL}/api/calculate`, params);
-        
-        // This assignment will trigger the reactive block below to re-filter the new data
-        calculationResults = calculationResponse.data;
-        
-    } catch (err) {
-        error = 'Failed to recalculate option data.';
-        console.error(err);
-    } finally {
-        isLoading = false;
-    }
-  }
-
-  // --- Helper Functions (unchanged) ---
-  function getAveragePremium(premiumRange) {
-      const parts = premiumRange.split('-').map(Number);
-      return (parts[0] + parts[1]) / 2;
-  }
-  
-  function isBreakeven(premiumRange, priceToAnalyze) {
-      if (!isAnalyzing || !priceToAnalyze) return false;
-      const [min, max] = premiumRange.split('-').map(Number);
-      return priceToAnalyze >= min && priceToAnalyze <= max;
-  }
-
-  function getPercentageChange(premiumRange, priceToAnalyze) {
-      if (!isAnalyzing || !priceToAnalyze) return { text: '', isProfit: false };
-      const avgPremium = getAveragePremium(premiumRange);
-      const change = ((avgPremium - priceToAnalyze) / priceToAnalyze) * 100;
-      const isProfit = change >= 0;
-      const sign = isProfit ? '+' : '';
-      return {
-          text: `${sign}${change.toFixed(1)}%`,
-          isProfit,
-      };
-  }
-
-  function isITM(currentStockPrice, currentStrikePrice, currentOptionType) {
-      if (currentOptionType === 'call') {
-          return currentStockPrice > currentStrikePrice;
-      } else { // 'put'
-          return currentStockPrice < currentStrikePrice;
+      const saved = localStorage.getItem('terminal-layout');
+      if (saved) {
+        const savedLayout = JSON.parse(saved);
+        const normalizedLayout = savedLayout.map(item => ({
+          ...item,
+          h: Math.max(MIN_COMPONENT_HEIGHT, item.h)
+        }));
+        layout.set(normalizedLayout);
       }
-  }
-
-  function getHeatmapStyle(currentPrice, premium, analysisMode, priceToAnalyze) {
-    if (analysisMode && priceToAnalyze > 0) {
-        const avgPremium = getAveragePremium(premium);
-        const difference = avgPremium - priceToAnalyze;
-        const intensity = Math.min(Math.abs(difference) / entryPriceHeatmapMax, 1);
-        const opacity = 0.1 + intensity * 0.4;
-
-        if (difference > 0) return `background-color: rgba(34, 197, 94, ${opacity});`;
-        if (difference < 0) return `background-color: rgba(239, 68, 68, ${opacity});`;
-
-    } else {
-        if (!heatmapMaxDifference) return '';
-        const difference = currentPrice - strikePrice;
-        const intensity = Math.min(Math.abs(difference) / heatmapMaxDifference, 1);
-        const opacity = 0.1 + intensity * 0.4;
-
-        if (optionType === 'call') {
-            if (difference > 0) return `background-color: rgba(34, 197, 94, ${opacity});`;
-            if (difference < 0) return `background-color: rgba(239, 68, 68, ${opacity});`;
-        } else { // 'put'
-            if (difference < 0) return `background-color: rgba(34, 197, 94, ${opacity});`;
-            if (difference > 0) return `background-color: rgba(239, 68, 68, ${opacity});`;
-        }
-    }
-    return '';
-  }
-
-  function formatHeaderTime(dateString) {
-      const date = new Date(dateString);
-      return new Intl.DateTimeFormat('en-US', {
-          hour: 'numeric',
-          hour12: true,
-      }).format(date);
-  }
-
-  function formatHeaderDay(dateString) {
-      const date = new Date(dateString);
-      return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-  }
-
-
-  // --- Reactive Statements ---
-
-  $: ticker = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
-
-  // Update priceIncrement when the slider index changes
-  $: priceIncrement = incrementSteps[priceIncrementIndex];
-
-  // This block now only runs if the user has NOT manually set the increment
-  $: if (stockPrice && !calculationResults && !userOverrodeIncrement) {
-      const price = parseFloat(stockPrice);
-      if (price >= 1 && price <= 10) priceIncrementIndex = 0; // 0.5
-      else if (price >= 11 && price <= 99) priceIncrementIndex = 1; // 1.0
-      else if (price >= 100 && price <= 199) priceIncrementIndex = 2; // 2.5
-      else if (price >= 200 && price <= 999) priceIncrementIndex = 3; // 5.0
-      else if (price >= 1000) priceIncrementIndex = 4; // 10.0
-  }
-
-  // [MODIFIED] This central reactive block now filters data and prepares it for rendering.
-  $: {
-    if (calculationResults) {
-        // Create a new object for the filtered data to avoid modifying the original
-        const filteredData = {
-            ...calculationResults,
-            tableData: {
-                ...calculationResults.tableData,
-                // THE FIX: Filter out rows with negative stock prices
-                rows: calculationResults.tableData.rows.filter(row => row.stockPrice >= 0)
-            }
-        };
-
-        // For the default ITM/OTM heatmap
-        const prices = filteredData.tableData.rows.map(row => row.stockPrice);
-        const maxDiff = Math.max(...prices.map(p => Math.abs(p - strikePrice)));
-        heatmapMaxDifference = maxDiff > 0 ? maxDiff : 1;
-
-        // For the entry price analysis heatmap
-        if (isAnalyzing && entryPrice > 0) {
-            let maxPremiumDiff = 0;
-            filteredData.tableData.rows.forEach(row => {
-                row.premiums.forEach(p => {
-                    const avg = getAveragePremium(p);
-                    maxPremiumDiff = Math.max(maxPremiumDiff, Math.abs(avg - entryPrice));
-                });
-            });
-            entryPriceHeatmapMax = maxPremiumDiff > 0 ? maxPremiumDiff : 1;
-        } else {
-            entryPriceHeatmapMax = 0;
-        }
-
-        // Recalculate the current premium coordinates based on the filtered data
-        const newCurrentPriceRowIndex = filteredData.tableData.rows.findIndex(row => Math.abs(row.stockPrice - stockPrice) < 0.01);
-        if (newCurrentPriceRowIndex !== -1) {
-            currentPremiumCoords = { row: newCurrentPriceRowIndex, col: 0 };
-        } else {
-            currentPremiumCoords = null;
-        }
-
-        // Assign the fully processed, filtered data to a new variable for rendering
-        filteredCalculationResults = filteredData;
-
-    } else {
-        filteredCalculationResults = null; // Clear it when there are no results
+    } catch (e) {
+      console.error('Failed to load layout:', e);
     }
   }
 
+  function saveLayout() {
+    try {
+      localStorage.setItem('terminal-layout', JSON.stringify($layout));
+    } catch (e) {
+      console.error('Failed to save layout:', e);
+    }
+  }
+
+  function handleRemoveComponent(id) {
+    layout.update(items => items.filter(item => item.id !== id));
+    saveLayout();
+  }
+
+  function handleConfigChange(id, newConfig) {
+    layout.update(items => 
+      items.map(item => 
+        item.id === id ? { ...item, config: newConfig } : item
+      )
+    );
+    saveLayout();
+  }
+
+  function toggleEditMode() {
+    isEditMode.update(mode => !mode);
+  }
+
+  function addComponent(componentType) {
+    const newId = `${componentType.toLowerCase()}-${Date.now()}`;
+    const defaultSize = componentRegistry[componentType]?.defaultSize || { w: 6, h: 6 };
+    
+    // Find the best position for the new component
+    const newY = findNextAvailableRow();
+    
+    const newComponent = {
+      id: newId,
+      component: componentType,
+      x: 0,
+      y: newY,
+      ...defaultSize,
+      config: {}
+    };
+    
+    layout.update(items => [...items, newComponent]);
+    saveLayout();
+    showComponentSelector = false;
+    console.log('Added component:', componentType, 'at position:', { x: 0, y: newY, ...defaultSize });
+  }
+
+  // Find the next available row to place a component
+  function findNextAvailableRow() {
+    const currentLayout = $layout;
+    if (currentLayout.length === 0) return 0;
+    const maxY = Math.max(...currentLayout.map(item => item.y + item.h));
+    return maxY;
+  }
+
+  // Reset layout function
+  function resetLayout() {
+    layout.set([
+      { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 8, config: {} }
+    ]);
+    saveLayout();
+    showComponentSelector = false;
+  }
+
+  // Clear all components
+  function clearAllComponents() {
+    layout.set([]);
+    saveLayout();
+  }
+
+  // Enhanced grid style calculation
+  function getGridStyle(item) {
+    const colSpan = Math.max(MIN_COMPONENT_WIDTH, Math.min(GRID_COLS, item.w));
+    const colStart = Math.max(1, Math.min(GRID_COLS - colSpan + 1, item.x + 1));
+    const rowSpan = Math.max(MIN_COMPONENT_HEIGHT, item.h);
+    
+    return `
+      grid-column: ${colStart} / span ${colSpan};
+      grid-row: ${item.y + 1} / span ${rowSpan};
+      min-height: ${MIN_CELL_HEIGHT * rowSpan}px;
+    `;
+  }
+
+  // Get pixel coordinates from mouse/touch event
+  function getEventCoordinates(event) {
+    if (event.touches) {
+      return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    }
+    return { x: event.clientX, y: event.clientY };
+  }
+
+  // Enhanced pixel to grid conversion with proper coordinate handling
+  function pixelToGrid(pixelX, pixelY) {
+    if (!gridContainer) return { x: 0, y: 0 };
+    
+    const rect = gridContainer.getBoundingClientRect();
+    const relativeX = pixelX - rect.left;
+    const relativeY = pixelY - rect.top;
+    
+    const cellWidth = rect.width / GRID_COLS;
+    const cellHeight = MIN_CELL_HEIGHT;
+    
+    // Allow negative coordinates during drag, constrain only at the end
+    const gridX = Math.floor(relativeX / cellWidth);
+    const gridY = Math.floor(relativeY / cellHeight);
+    
+    return { x: gridX, y: gridY };
+  }
+
+  // Find overlapping components for swapping
+  function findOverlappingComponents(x, y, w, h, excludeId = null) {
+    return $layout.filter(item => {
+      if (item.id === excludeId) return false;
+      return !(
+        x >= item.x + item.w ||
+        x + w <= item.x ||
+        y >= item.y + item.h ||
+        y + h <= item.y
+      );
+    });
+  }
+
+  // Drag functionality with proper coordinate handling
+  function startDrag(event, item) {
+    if (!$isEditMode || isDragging) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    isDragging = true;
+    document.body.style.overflow = 'hidden';
+    
+    activeAction = 'drag';
+    activeComponent = item;
+    
+    const coords = getEventCoordinates(event);
+    dragStart = coords;
+    componentStart = { x: item.x, y: item.y, w: item.w, h: item.h };
+    
+    const element = document.querySelector(`[data-component-id="${item.id}"]`);
+    if (element) {
+      element.classList.add('dragging');
+    }
+  }
+
+  // Resize functionality
+  function startResize(event, item) {
+    if (!$isEditMode || isDragging) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    isDragging = true;
+    document.body.style.overflow = 'hidden';
+    
+    activeAction = 'resize';
+    activeComponent = item;
+    
+    const coords = getEventCoordinates(event);
+    dragStart = coords;
+    componentStart = { x: item.x, y: item.y, w: item.w, h: item.h };
+  }
+
+  // Fixed mouse move handler with smooth positioning and snap detection
+  function handleGlobalMouseMove(event) {
+    if (!activeAction || !activeComponent || !isDragging) return;
+    
+    event.preventDefault();
+    
+    const coords = getEventCoordinates(event);
+    
+    if (activeAction === 'drag') {
+      // Calculate the difference in pixels, then convert to grid units
+      const deltaX = coords.x - dragStart.x;
+      const deltaY = coords.y - dragStart.y;
+      
+      // Convert pixel deltas to grid deltas with more sensitive movement
+      const rect = gridContainer.getBoundingClientRect();
+      const cellWidth = rect.width / GRID_COLS;
+      const cellHeight = MIN_CELL_HEIGHT;
+      
+      // Use a smaller threshold for more responsive movement
+      const sensitivity = 0.3; // Adjust this value for sensitivity (0.1 = very sensitive, 0.5 = less sensitive)
+      const gridDeltaX = Math.floor(deltaX / (cellWidth * sensitivity)) * sensitivity;
+      const gridDeltaY = Math.floor(deltaY / (cellHeight * sensitivity)) * sensitivity;
+      
+      // Calculate new position
+      const rawNewX = componentStart.x + gridDeltaX;
+      const rawNewY = componentStart.y + gridDeltaY;
+      
+      // Snap to grid with better precision
+      const snappedX = Math.round(rawNewX);
+      const snappedY = Math.round(rawNewY);
+      
+      // Apply constraints
+      const constrainedX = Math.max(0, Math.min(GRID_COLS - activeComponent.w, snappedX));
+      const constrainedY = Math.max(0, snappedY);
+      
+      // Check for adjacent component snapping
+      const snapPosition = findSnapPosition(constrainedX, constrainedY, activeComponent);
+      
+      // Update position
+      updateComponentPosition(activeComponent.id, { 
+        x: snapPosition.x, 
+        y: snapPosition.y 
+      });
+      
+    } else if (activeAction === 'resize') {
+      const currentGridPos = pixelToGrid(coords.x, coords.y);
+      const startGridPos = pixelToGrid(dragStart.x, dragStart.y);
+      
+      const deltaX = currentGridPos.x - startGridPos.x;
+      const deltaY = currentGridPos.y - startGridPos.y;
+      
+      const newW = Math.max(1, Math.min(GRID_COLS - activeComponent.x, 
+        componentStart.w + deltaX));
+      const newH = Math.max(1, componentStart.h + deltaY);
+      
+      updateComponentPosition(activeComponent.id, { w: newW, h: newH });
+    }
+  }
+
+  // Find the best snap position to avoid overlaps and enable close positioning
+  function findSnapPosition(targetX, targetY, draggedComponent) {
+    const snapThreshold = 1; // How close components can be
+    const otherComponents = $layout.filter(item => item.id !== draggedComponent.id);
+    
+    let bestX = targetX;
+    let bestY = targetY;
+    
+    // Check for collisions and find adjacent positions
+    for (const otherComponent of otherComponents) {
+      const wouldOverlap = !(
+        targetX >= otherComponent.x + otherComponent.w ||
+        targetX + draggedComponent.w <= otherComponent.x ||
+        targetY >= otherComponent.y + otherComponent.h ||
+        targetY + draggedComponent.h <= otherComponent.y
+      );
+      
+      if (wouldOverlap) {
+        // Find the best adjacent position
+        const positions = [
+          // Right of the other component
+          { x: otherComponent.x + otherComponent.w, y: targetY },
+          // Left of the other component
+          { x: otherComponent.x - draggedComponent.w, y: targetY },
+          // Below the other component
+          { x: targetX, y: otherComponent.y + otherComponent.h },
+          // Above the other component
+          { x: targetX, y: otherComponent.y - draggedComponent.h }
+        ];
+        
+        // Filter valid positions and find the closest one
+        const validPositions = positions.filter(pos => 
+          pos.x >= 0 && 
+          pos.x + draggedComponent.w <= GRID_COLS && 
+          pos.y >= 0
+        );
+        
+        if (validPositions.length > 0) {
+          // Choose the position closest to the target
+          const closest = validPositions.reduce((closest, pos) => {
+            const currentDistance = Math.abs(pos.x - targetX) + Math.abs(pos.y - targetY);
+            const closestDistance = Math.abs(closest.x - targetX) + Math.abs(closest.y - targetY);
+            return currentDistance < closestDistance ? pos : closest;
+          });
+          
+          bestX = closest.x;
+          bestY = closest.y;
+          break;
+        }
+      }
+    }
+    
+    return { x: bestX, y: bestY };
+  }
+
+  // Enhanced mouse up handler with improved final positioning
+  function handleGlobalMouseUp(event) {
+    if (!isDragging) return;
+    
+    document.body.style.overflow = '';
+    isDragging = false;
+    
+    if (activeAction && activeComponent) {
+      const element = document.querySelector(`[data-component-id="${activeComponent.id}"]`);
+      if (element) {
+        element.classList.remove('dragging');
+      }
+
+      if (activeAction === 'drag') {
+        // For final positioning, use more precise logic
+        const coords = getEventCoordinates(event);
+        const deltaX = coords.x - dragStart.x;
+        const deltaY = coords.y - dragStart.y;
+        
+        const rect = gridContainer.getBoundingClientRect();
+        const cellWidth = rect.width / GRID_COLS;
+        const cellHeight = MIN_CELL_HEIGHT;
+        
+        const gridDeltaX = Math.round(deltaX / cellWidth);
+        const gridDeltaY = Math.round(deltaY / cellHeight);
+        
+        const finalX = Math.max(0, Math.min(GRID_COLS - activeComponent.w, 
+          componentStart.x + gridDeltaX));
+        const finalY = Math.max(0, componentStart.y + gridDeltaY);
+        
+        // Use snap positioning for final placement
+        const snapPosition = findSnapPosition(finalX, finalY, activeComponent);
+        
+        // Apply final position
+        updateComponentPosition(activeComponent.id, { 
+          x: snapPosition.x, 
+          y: snapPosition.y 
+        });
+      }
+      
+      saveLayout();
+    }
+    
+    activeAction = null;
+    activeComponent = null;
+  }
+
+  // Touch event handlers
+  function handleTouchStart(event, item, action = 'drag') {
+    if (!$isEditMode) return;
+    
+    if (event.touches.length === 1) {
+      isMultiTouch = false;
+      if (action === 'drag') {
+        startDrag(event, item);
+      } else if (action === 'resize') {
+        startResize(event, item);
+      }
+    } else if (event.touches.length === 2) {
+      isMultiTouch = true;
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      initialPinchDistance = Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) +
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
+    }
+  }
+
+  function handleGlobalTouchMove(event) {
+    if (isMultiTouch && event.touches.length === 2) {
+      event.preventDefault();
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      const currentDistance = Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) +
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
+      
+      const scale = currentDistance / initialPinchDistance;
+      if (gridContainer) {
+        gridContainer.style.transform = `scale(${Math.max(0.5, Math.min(2, scale))})`;
+        gridContainer.style.transformOrigin = 'center center';
+      }
+    } else if (!isMultiTouch && activeAction && activeComponent) {
+      event.preventDefault();
+      handleGlobalMouseMove(event);
+    }
+  }
+
+  function handleGlobalTouchEnd(event) {
+    if (event.touches.length === 0) {
+      isMultiTouch = false;
+      if (gridContainer) {
+        gridContainer.style.transform = '';
+      }
+      handleGlobalMouseUp(event);
+    }
+  }
+
+  // Update component position
+  function updateComponentPosition(id, changes) {
+    layout.update(items => 
+      items.map(item => 
+        item.id === id ? { ...item, ...changes } : item
+      )
+    );
+  }
+
+  // Handle calculation results
+  function handleCalculationComplete(event) {
+    calculationResults = event.detail.results;
+    inputData = event.detail.inputData;
+    
+    // Auto-expand PricingMatrix when results are available
+    const pricingMatrixComponent = $layout.find(item => item.component === 'PricingMatrix');
+    if (pricingMatrixComponent && pricingMatrixComponent.h < 8) {
+      updateComponentPosition(pricingMatrixComponent.id, { h: 10 });
+      saveLayout();
+    }
+    
+    console.log('Calculation completed:', event.detail);
+  }
+
+  function handleResultsCleared() {
+    calculationResults = null;
+    inputData = {};
+    
+    // Auto-shrink PricingMatrix when results are cleared
+    const pricingMatrixComponent = $layout.find(item => item.component === 'PricingMatrix');
+    if (pricingMatrixComponent && pricingMatrixComponent.h > 6) {
+      updateComponentPosition(pricingMatrixComponent.id, { h: 4 });
+      saveLayout();
+    }
+  }
+
+  // Handle component requests from CalculationEngine
+  function handleRequestComponent(event) {
+    console.log('Component requested:', event.detail);
+    const { type } = event.detail;
+    if (type === 'PricingMatrix') {
+      // Check if PricingMatrix already exists
+      const existingMatrix = $layout.find(item => item.component === 'PricingMatrix');
+      if (!existingMatrix) {
+        console.log('Adding PricingMatrix component');
+        addComponent('PricingMatrix');
+      } else {
+        console.log('PricingMatrix already exists');
+      }
+    }
+  }
+
+  // Check if PricingMatrix component exists
+  function hasPricingMatrix() {
+    return $layout.some(item => item.component === 'PricingMatrix');
+  }
 </script>
 
-<div class="max-w-7xl mx-auto">
-  <div class="text-center mb-8 sm:mb-10">
-    <h1 class="text-4xl sm:text-5xl font-extrabold text-white">Option Price Terminal</h1>
-    <p class="text-lg sm:text-xl text-gray-400 mt-4">Real-time analytics and price modeling.</p>
+<svelte:head>
+  <title>Terminal - Deltuh</title>
+</svelte:head>
+
+<div class="max-w-7xl mx-auto p-3 sm:p-4">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-10 gap-4">
+    <div class="text-left flex items-center gap-4">
+      <img src="/deltuh logo.svg" alt="Deltuh Logo" class="h-16 w-auto">
+      <div>
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white">Terminal</h1>
+        <p class="text-base sm:text-lg lg:text-xl text-gray-400 mt-2">Your customizable analytics workspace.</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 sm:gap-4">
+      <button 
+        on:click={() => showComponentSelector = true}
+        class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 sm:px-5 rounded-lg transition-all text-sm sm:text-base flex items-center gap-2"
+      >
+        <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        <span class="hidden sm:inline">Add Component</span>
+        <span class="sm:hidden">Add</span>
+      </button>
+      
+      <!-- Reset Layout Button -->
+      <button 
+        on:click={resetLayout}
+        class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 sm:px-5 rounded-lg transition-all text-sm sm:text-base"
+      >
+        <span>Reset</span>
+      </button>
+      
+      <button 
+        on:click={toggleEditMode}
+        class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 sm:px-5 rounded-lg transition-all text-sm sm:text-base flex items-center gap-2 {$isEditMode ? 'ring-2 ring-indigo-500' : ''}"
+      >
+        <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span class="hidden sm:inline">{$isEditMode ? 'Lock Layout' : 'Customize'}</span>
+        <span class="sm:hidden">{$isEditMode ? 'Lock' : 'Edit'}</span>
+      </button>
+    </div>
   </div>
   
-  <div class="bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl border border-gray-700 space-y-8">
-    
-    <!-- Main Inputs -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <label class="flex flex-col space-y-2">
-        <span class="font-semibold text-gray-400">Ticker</span>
-        <input bind:value={ticker} type="text" placeholder="e.g., AAPL" class="uppercase bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-      </label>
-      <label class="flex flex-col space-y-2">
-        <span class="font-semibold text-gray-400">Strike Price</span>
-        <input bind:value={strikePrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="e.g., 540">
-      </label>
-      <label class="flex flex-col space-y-2">
-        <span class="font-semibold text-gray-400">Expiration Date</span>
-        <input bind:value={expiration} type="date" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-      </label>
+  {#if $isEditMode}
+    <div class="mb-6 bg-indigo-900/30 border border-indigo-700 text-indigo-300 p-4 rounded-lg text-center">
+      <svg class="mx-auto h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+      </svg>
+      <p class="font-medium">Edit mode active - Drag to move • Resize from bottom-right • Drop on components to swap</p>
+      <p class="text-sm mt-1 opacity-80">You have full control over component sizes - resize as small or large as needed</p>
     </div>
-
-    <!-- Advanced / Auto-populated Inputs -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <label class="flex flex-col space-y-2">
-            <span class="font-semibold text-gray-400">Current Stock Price (Optional)</span>
-            <input bind:value={stockPrice} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Auto-fetched">
-        </label>
-        <label class="flex flex-col space-y-2">
-            <span class="font-semibold text-gray-400">Implied Volatility (Optional)</span>
-            <input bind:value={impliedVolatility} type="number" class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Auto-fetched">
-        </label>
-    </div>
-
-    <hr class="border-gray-700">
-
-    <!-- Calculation Controls -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
-        <label class="flex flex-col space-y-2">
-            <span class="font-semibold text-gray-400">Option Type</span>
-            <select bind:value={optionType} on:change={reCalculate} class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition h-[52px]">
-              <option value="call">Calls</option>
-              <option value="put">Puts</option>
-            </select>
-        </label>
-        
-        <!-- Price Increment Slider -->
-        <div class="flex flex-col space-y-2">
-            <div class="flex justify-between items-center">
-                <span class="font-semibold text-gray-400">Price Increments</span>
-                <span class="font-bold text-indigo-400 text-lg bg-gray-900 px-3 py-1 rounded-md">{priceIncrement.toFixed(2)}</span>
-            </div>
-            <input 
-                type="range" 
-                min="0" 
-                max={incrementSteps.length - 1} 
-                step="1"
-                bind:value={priceIncrementIndex}
-                on:change={() => {
-                    userOverrodeIncrement = true;
-                    reCalculate();
-                }}
-                class="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg slider-thumb"
+  {/if}
+  
+  <!-- Enhanced Grid Layout -->
+  <div 
+    class="grid grid-cols-12 gap-3 sm:gap-4 grid-container" 
+    style="grid-auto-rows: {MIN_CELL_HEIGHT}px; min-height: 400px; position: relative;"
+    bind:this={gridContainer}
+  >
+    {#each $layout as item (item.id)}
+      <div
+        class="relative component-container {$isEditMode ? 'edit-mode' : ''} {activeComponent?.id === item.id ? 'active' : ''} {isDragging && activeComponent?.id === item.id ? 'dragging' : ''}"
+        style={getGridStyle(item)}
+        data-component-id={item.id}
+        on:mousedown={(e) => startDrag(e, item)}
+        on:touchstart={(e) => handleTouchStart(e, item, 'drag')}
+        role="button"
+        tabindex="0"
+        aria-label="Drag to reposition component"
+      >
+        {#if $isEditMode}
+          <div class="absolute top-2 right-2 z-30 flex gap-2">
+            <!-- Drag handle -->
+            <div 
+              class="bg-gray-600 hover:bg-gray-500 text-white p-2 rounded-md shadow-lg cursor-move drag-handle"
+              title="Drag to move"
             >
-        </div>
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+              </svg>
+            </div>
+            <!-- Remove button -->
+            <button
+              on:click={() => handleRemoveComponent(item.id)}
+              class="bg-red-600 hover:bg-red-500 text-white p-2 rounded-md shadow-lg"
+              title="Remove component"
+              aria-label="Remove component"
+            >
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-        <button on:click={handleCalculate} disabled={isLoading} class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-base sm:text-lg h-[52px] disabled:bg-indigo-800 disabled:cursor-not-allowed">
-            {isLoading ? 'Calculating...' : 'Calculate'}
-        </button>
-    </div>
-  </div>
-
-  <!-- [MODIFIED] Results section now uses filteredCalculationResults -->
-  {#if error}
-    <div class="mt-8 bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center">
-        {error}
-    </div>
-  {/if}
-
-  {#if filteredCalculationResults}
-    <div class="mt-12 space-y-8" bind:this={resultsSection}>
-      
-      {#if infoMessage}
-        <div class="bg-gray-800/60 border border-gray-700 text-gray-300 p-4 rounded-lg text-center text-base flex items-center justify-center gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          <!-- Enhanced resize handle -->
+          <div 
+            class="absolute bottom-1 right-1 w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 cursor-se-resize resize-handle opacity-80 hover:opacity-100 transition-all duration-200 rounded-tl-lg flex items-center justify-center"
+            on:mousedown={(e) => startResize(e, item)}
+            on:touchstart={(e) => handleTouchStart(e, item, 'resize')}
+            title="Drag to resize"
+            role="button"
+            tabindex="0"
+            aria-label="Drag to resize component"
+          >
+            <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
             </svg>
-            <span class="font-medium">{infoMessage}</span>
-        </div>
-      {/if}
+          </div>
 
-      <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-center justify-center">
-          <button on:click={() => isAnalyzing = !isAnalyzing} class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-8 rounded-lg transition-all text-base sm:text-lg">
-            {isAnalyzing ? 'Hide Analyzer' : 'Analyze Entry Price'}
-          </button>
-      </div>
-
-      {#if isAnalyzing}
-        <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
-            <label class="flex flex-col sm:flex-row items-center gap-4">
-                <span class="font-semibold text-gray-400 text-base sm:text-lg">Your Entry Price:</span>
-                <input bind:value={entryPrice} type="number" placeholder="e.g., 12.50" class="flex-grow bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-            </label>
-        </div>
-      {/if}
-
-      <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 text-center">
-          {#if optionType === 'call'}
-            <h3 class="text-lg sm:text-xl font-semibold text-gray-400">Current Call Price</h3>
-            <p class="text-2xl sm:text-3xl font-sans text-white mt-2">{filteredCalculationResults.callPriceRange}</p>
-          {:else}
-            <h3 class="text-lg sm:text-xl font-semibold text-gray-400">Current Put Price</h3>
-            <p class="text-2xl sm:text-3xl font-sans text-white mt-2">{filteredCalculationResults.putPriceRange}</p>
+          <!-- Grid overlay for visual feedback -->
+          <div class="absolute inset-0 grid-overlay pointer-events-none opacity-10">
+            <div class="w-full h-full border-2 border-dashed border-indigo-400 rounded-lg bg-indigo-500/5"></div>
+          </div>
+        {/if}
+        
+        <!-- Component content with flexible overflow -->
+        <div class="h-full w-full overflow-auto component-content">
+          {#if components[item.component]}
+            <svelte:component 
+              this={components[item.component]} 
+              config={item.config}
+              {calculationResults}
+              {inputData}
+              hasPricingMatrix={hasPricingMatrix()}
+              on:configChange={(e) => handleConfigChange(item.id, e.detail.config)}
+              on:remove={() => handleRemoveComponent(item.id)}
+              on:calculationComplete={handleCalculationComplete}
+              on:resultsCleared={handleResultsCleared}
+              on:requestComponent={handleRequestComponent}
+            />
           {/if}
-      </div>
-
-      <div class="bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden">
-        <div class="p-4 bg-gray-700/50 border-b border-gray-700 grid grid-cols-3 items-center">
-            <h3 class="text-lg sm:text-xl font-bold text-white uppercase text-left">{ticker}</h3>
-            <img src="/deltuh logo.svg" alt="Deltuh Logo" class="h-10 w-auto justify-self-center">
-            <p class="text-base sm:text-lg font-medium text-gray-300 text-right">Expiration: {expiration}</p>
-        </div>
-        <div class="overflow-x-auto custom-scrollbar">
-            <table class="min-w-full text-sm sm:text-base text-left">
-                <thead class="bg-gray-700/50">
-                    <tr>
-                        <th class="sticky left-0 bg-gray-800 p-2 sm:p-4 font-semibold tracking-wider text-white whitespace-nowrap z-20">Stock Price</th>
-                        {#each filteredCalculationResults.tableData.timeHeaders as timeHeader}
-                            <th class="p-2 sm:p-4 font-semibold tracking-wider text-white text-center whitespace-nowrap">
-                                <div class="flex flex-col">
-                                    <span class="text-xs text-indigo-400 font-bold">{formatHeaderDay(timeHeader)}</span>
-                                    <span class="text-xs sm:text-sm">{new Date(timeHeader).toLocaleDateString()}</span>
-                                    <span class="text-xs text-gray-400 font-normal">{formatHeaderTime(timeHeader)}</span>
-                                </div>
-                            </th>
-                        {/each}
-                    </tr>
-                </thead>
-                <tbody>
-                    {#each filteredCalculationResults.tableData.rows as row, i}
-                        {@const isStrike = Math.abs(row.stockPrice - strikePrice) < 0.01}
-                        {@const isCurrent = Math.abs(row.stockPrice - stockPrice) < 0.01}
-                        <tr 
-                          class="border-b border-gray-700"
-                          title={isStrike ? 'Strike Price' : (isCurrent ? 'Current Stock Price' : '')}
-                        >
-                            <td 
-                              class="sticky left-0 bg-gray-800 p-2 sm:p-4 font-sans font-bold whitespace-nowrap z-10 {isStrike ? 'text-green-400' : ''} {isCurrent ? 'text-blue-400' : ''} {(!isStrike && !isCurrent) ? 'text-gray-300' : ''}"
-                            >
-                                <div class="flex items-center gap-2 sm:gap-3">
-                                    <span class="text-sm sm:text-base">${row.stockPrice.toFixed(2)}</span>
-                                    {#if isStrike}
-                                      <span class="text-xs font-semibold px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full">Strike</span>
-                                    {/if}
-                                    {#if isCurrent}
-                                      <span class="text-xs font-semibold px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-full">Current</span>
-                                    {/if}
-                                </div>
-                            </td>
-                            {#each row.premiums as premium, j}
-                                {@const isBreakevenCell = isBreakeven(premium, entryPrice)}
-                                {@const percentageChange = getPercentageChange(premium, entryPrice)}
-                                {@const isCurrentPremiumCell = currentPremiumCoords && currentPremiumCoords.row === i && currentPremiumCoords.col === j}
-                                <td 
-                                  class="p-2 sm:p-4 font-sans text-gray-400 text-center whitespace-nowrap transition-colors duration-300"
-                                  style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
-                                >
-                                    {#if isAnalyzing && entryPrice > 0}
-                                      <div class="flex flex-col justify-center items-center">
-                                          {#if isBreakevenCell}
-                                            <span class="breakeven-label">Breakeven</span>
-                                          {:else}
-                                            <span class="percentage-label" class:profit={percentageChange.isProfit} class:loss={!percentageChange.isProfit}>
-                                              {percentageChange.text}
-                                            </span>
-                                          {/if}
-                                          <span class:breakeven-text={isBreakevenCell}>{premium}</span>
-                                      </div>
-                                    {:else if isCurrentPremiumCell}
-                                      <div class="flex flex-col justify-center items-center">
-                                          <span class="current-label">Current</span>
-                                          <span class="current-text">{premium}</span>
-                                      </div>
-                                    {:else}
-                                      <span>{premium}</span>
-                                    {/if}
-                                </td>
-                            {/each}
-                        </tr>
-                        
-                        {#if i < filteredCalculationResults.tableData.rows.length - 1}
-                            {@const regionAboveIsITM = isITM(row.stockPrice, strikePrice, optionType)}
-                            {@const regionBelowIsITM = isITM(filteredCalculationResults.tableData.rows[i + 1].stockPrice, strikePrice, optionType)}
-                            
-                            {#if regionAboveIsITM !== regionBelowIsITM}
-                                <tr class="itm-otm-separator-row">
-                                    <td colspan={filteredCalculationResults.tableData.timeHeaders.length + 1}>
-                                        <div class="separator-content">
-                                            <div class="flex items-center gap-2">
-                                                <svg class="h-4 w-4" class:itm-arrow={optionType === 'put'} class:otm-arrow={optionType === 'call'} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
-                                                {#if optionType === 'call'}
-                                                    <span class="separator-text otm-text">Out of the Money</span>
-                                                {:else}
-                                                    <span class="separator-text itm-text">In the Money</span>
-                                                {/if}
-                                            </div>
-
-                                            <span class="separator-line" class:call={optionType === 'call'} class:put={optionType === 'put'}></span>
-
-                                            <div class="flex items-center gap-2">
-                                                {#if optionType === 'call'}
-                                                    <span class="separator-text itm-text">In the Money</span>
-                                                {:else}
-                                                    <span class="separator-text otm-text">Out of the Money</span>
-                                                {/if}
-                                                <svg class="h-4 w-4" class:itm-arrow={optionType === 'call'} class:otm-arrow={optionType === 'put'} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {/if}
-                        {/if}
-                    {/each}
-                </tbody>
-            </table>
         </div>
       </div>
-    </div>
-  {/if}
+    {/each}
+    
+    <!-- Empty state when no components -->
+    {#if $layout.length === 0}
+      <div class="col-span-12 flex flex-col items-center justify-center p-12 text-center">
+        <svg class="h-16 w-16 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        <h3 class="text-xl font-semibold text-gray-400 mb-2">No Components Yet</h3>
+        <p class="text-gray-500 mb-6">Add components to build your analytics workspace</p>
+        <div class="flex gap-3">
+          <button 
+            on:click={() => showComponentSelector = true}
+            class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-6 rounded-lg transition-all"
+          >
+            Add Your First Component
+          </button>
+          <button 
+            on:click={resetLayout}
+            class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg transition-all"
+          >
+            Start with Calculation Engine
+          </button>
+        </div>
+      </div>
+    {/if}
+  </div>
 </div>
 
+<!-- Component Selector Modal -->
+{#if showComponentSelector}
+  <ComponentSelector 
+    {componentRegistry}
+    on:addComponent={(e) => addComponent(e.detail.componentType)}
+    on:close={() => showComponentSelector = false} 
+  />
+{/if}
+
 <style>
-  /* [NEW] Custom styles for the range slider */
-  .slider-thumb::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    background: #6366f1; /* indigo-500 */
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid #e5e7eb; /* gray-200 */
-    transition: background-color 0.2s;
-  }
-  .slider-thumb::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    background: #6366f1;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid #e5e7eb;
-  }
-  .slider-thumb:hover::-webkit-slider-thumb {
-    background: #4f46e5; /* indigo-600 */
-  }
-  .slider-thumb:hover::-moz-range-thumb {
-    background: #4f46e5;
-  }
-
-  /* Custom styles for the table's horizontal scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    height: 12px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background-color: #1f2937; /* bg-gray-800 */
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #4f46e5; /* bg-indigo-600 */
-    border-radius: 10px;
-    border: 3px solid #1f2937;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #4338ca; /* bg-indigo-700 */
-  }
-
-  /* Styles for the breakeven indicator */
-  .breakeven-label {
-    font-size: 0.6rem;
-    font-weight: bold;
-    color: #facc15; /* yellow-400 */
-    text-transform: uppercase;
-    line-height: 1;
-  }
-  .breakeven-text {
-    font-weight: bold;
-    color: #fde047; /* yellow-300 */
-    text-shadow: 0 0 8px rgba(250, 204, 21, 0.5);
-    line-height: 1.2;
-  }
-
-  /* Styles for the percentage change indicator */
-  .percentage-label {
-    font-size: 0.6rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    line-height: 1;
-  }
-  .percentage-label.profit {
-    color: #4ade80; /* green-400 */
-    text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
-  }
-  .percentage-label.loss {
-    color: #f87171; /* red-400 */
-    text-shadow: 0 0 8px rgba(248, 113, 113, 0.5);
+  /* Enhanced component container styles */
+  .component-container {
+    transition: all 0.2s ease;
+    position: relative;
+    background: rgba(31, 41, 55, 0.8);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(75, 85, 99, 0.3);
   }
   
-  /* Styles for the current price indicator */
-  .current-label {
-      font-size: 0.6rem;
-      font-weight: bold;
-      color: #93c5fd; /* blue-300 */
-      text-transform: uppercase;
-      line-height: 1;
+  .component-container.edit-mode {
+    cursor: grab;
+    border: 2px dashed transparent;
   }
-  .current-text {
-      font-weight: bold;
-      color: #60a5fa; /* blue-400 */
-      text-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
-      line-height: 1.2;
+  
+  .component-container.edit-mode:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    transform: scale(1.005);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
+    background: rgba(31, 41, 55, 0.9);
+  }
+  
+  .component-container.active {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+    z-index: 50;
+    background: rgba(31, 41, 55, 0.95);
+  }
+  
+  .component-container.dragging {
+    cursor: grabbing;
+    opacity: 0.85;
+    transform: rotate(1deg) scale(1.03);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    border-color: #8b5cf6 !important;
+  }
+  
+  /* Enhanced drag handle styles */
+  .drag-handle {
+    cursor: grab;
+    transition: all 0.2s ease;
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+  }
+  
+  .drag-handle:hover {
+    transform: scale(1.1);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  }
+  
+  .drag-handle:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+  }
+  
+  /* Enhanced resize handle styles */
+  .resize-handle {
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .resize-handle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+  
+  .resize-handle:active {
+    transform: scale(0.9);
+  }
+  
+  /* Grid overlay for visual feedback */
+  .grid-overlay {
+    background-image: 
+      linear-gradient(rgba(99, 102, 241, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99, 102, 241, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-radius: 12px;
+  }
+  
+  /* Enhanced grid container */
+  .grid-container {
+    transform-origin: center center;
+    transition: transform 0.2s ease-out;
+    touch-action: manipulation;
+    position: relative;
+    isolation: isolate;
+  }
+  
+  /* Prevent separation during scroll */
+  .grid-container::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: transparent;
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  /* Custom scrollbars for all components */
+  :global(.component-container *::-webkit-scrollbar) {
+    width: 8px;
+    height: 8px;
   }
 
-  @media (min-width: 640px) {
-    .breakeven-label, .percentage-label, .current-label {
-      font-size: 0.65rem;
+  :global(.component-container *::-webkit-scrollbar-track) {
+    background-color: rgba(55, 65, 81, 0.3);
+    border-radius: 4px;
+  }
+
+  :global(.component-container *::-webkit-scrollbar-thumb) {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 4px;
+    border: 1px solid rgba(55, 65, 81, 0.5);
+  }
+
+  :global(.component-container *::-webkit-scrollbar-thumb:hover) {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  }
+
+  :global(.component-container *::-webkit-scrollbar-corner) {
+    background-color: rgba(55, 65, 81, 0.3);
+  }
+
+  /* Firefox scrollbar support */
+  :global(.component-container *) {
+    scrollbar-width: thin;
+    scrollbar-color: #6366f1 rgba(55, 65, 81, 0.3);
+  }
+  
+  /* Force stable positioning */
+  :global(.component-container) {
+    contain: layout style paint;
+    will-change: transform;
+  }
+  
+  /* Prevent layout shifts during scroll */
+  :global(body) {
+    overflow-x: hidden;
+  }
+  
+  /* Mobile-optimized styles */
+  @media (max-width: 768px) {
+    .component-container.edit-mode {
+      min-height: 120px;
     }
-  }
-
-  /* Styles for the ITM/OTM separator */
-  .itm-otm-separator-row td {
-      padding: 0 !important;
-  }
-  .separator-content {
+    
+    .drag-handle, .resize-handle {
+      min-width: 44px;
+      min-height: 44px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      padding: 4px 1rem;
-  }
-  .separator-line {
-      flex-grow: 1;
-      height: 2px;
-      margin: 0 1rem;
-      border-radius: 99px;
-  }
-  .separator-line.call {
-    background: linear-gradient(to right, #ef4444, #22c55e);
-  }
-  .separator-line.put {
-    background: linear-gradient(to right, #22c55e, #ef4444);
-  }
-
-  .separator-text {
-      font-size: 0.7rem;
-      font-weight: bold;
-      text-transform: uppercase;
+      justify-content: center;
+    }
+    
+    .grid-container {
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.75rem;
+      padding: 0.5rem;
+    }
   }
   
-  .itm-text {
-    color: #4ade80;
+  /* Original custom scrollbar styles for backward compatibility */
+  :global(.custom-scrollbar::-webkit-scrollbar) {
+    height: 8px;
+    width: 8px;
   }
-  .otm-text {
-    color: #f87171;
+  :global(.custom-scrollbar::-webkit-scrollbar-track) {
+    background-color: #374151;
+    border-radius: 4px;
   }
-  .itm-arrow {
-    color: #4ade80;
+  :global(.custom-scrollbar::-webkit-scrollbar-thumb) {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 4px;
   }
-  .otm-arrow {
-    color: #f87171;
+  :global(.custom-scrollbar::-webkit-scrollbar-thumb:hover) {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  }
+  
+  /* Accessibility improvements */
+  .component-container:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+  
+  .drag-handle:focus-visible,
+  .resize-handle:focus-visible {
+    outline: 2px solid #fbbf24;
+    outline-offset: 2px;
+  }
+  
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .component-container,
+    .drag-handle,
+    .resize-handle,
+    .grid-container {
+      transition: none;
+    }
+    
+    .component-container.edit-mode:hover {
+      transform: none;
+    }
   }
 </style>

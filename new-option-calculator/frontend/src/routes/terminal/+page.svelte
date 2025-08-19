@@ -18,15 +18,15 @@
   };
 
   const componentRegistry = {
-    CalculationEngine: { title: 'Calculation Engine', defaultSize: { w: 12, h: 8 } },
-    PricingMatrix: { title: 'Pricing Matrix', defaultSize: { w: 12, h: 4 } },
-    GreeksDashboard: { title: 'Greeks Dashboard', defaultSize: { w: 6, h: 6 } },
-    MarketData: { title: 'Market Data', defaultSize: { w: 6, h: 6 } }
+    CalculationEngine: { title: 'Calculation Engine', defaultSize: { w: 12, h: 6 } },
+    PricingMatrix: { title: 'Pricing Matrix', defaultSize: { w: 12, h: 3 } },
+    GreeksDashboard: { title: 'Greeks Dashboard', defaultSize: { w: 6, h: 4 } },
+    MarketData: { title: 'Market Data', defaultSize: { w: 6, h: 4 } }
   };
 
   // Layout state - start with only CalculationEngine
   let layout = writable([
-    { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 8, config: {} }
+    { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 6, config: {} }
   ]);
 
   let isEditMode = writable(false);
@@ -44,7 +44,7 @@
 
   // Grid configuration
   const GRID_COLS = 12;
-  const MIN_CELL_HEIGHT = 80;
+  const MIN_CELL_HEIGHT = 60; // Reduced for better mobile sizing
   const MIN_COMPONENT_WIDTH = 2;
   const MIN_COMPONENT_HEIGHT = 2;
 
@@ -144,7 +144,7 @@
   // Reset layout function
   function resetLayout() {
     layout.set([
-      { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 8, config: {} }
+      { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 6, config: {} }
     ]);
     saveLayout();
     showComponentSelector = false;

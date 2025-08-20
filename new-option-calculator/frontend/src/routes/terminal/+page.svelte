@@ -18,15 +18,15 @@
   };
 
   const componentRegistry = {
-    CalculationEngine: { title: 'Calculation Engine', defaultSize: { w: 12, h: 6 } },
-    PricingMatrix: { title: 'Pricing Matrix', defaultSize: { w: 12, h: 3 } },
-    GreeksDashboard: { title: 'Greeks Dashboard', defaultSize: { w: 6, h: 4 } },
-    MarketData: { title: 'Market Data', defaultSize: { w: 6, h: 4 } }
+    CalculationEngine: { title: 'Calculation Engine', defaultSize: { w: 12, h: 7 } },
+    PricingMatrix: { title: 'Pricing Matrix', defaultSize: { w: 12, h: 4 } },
+    GreeksDashboard: { title: 'Greeks Dashboard', defaultSize: { w: 6, h: 5 } },
+    MarketData: { title: 'Market Data', defaultSize: { w: 6, h: 5 } }
   };
 
   // Layout state - start with only CalculationEngine
   let layout = writable([
-    { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 6, config: {} }
+    { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 7, config: {} }
   ]);
 
   let isEditMode = writable(false);
@@ -44,7 +44,7 @@
 
   // Grid configuration
   const GRID_COLS = 12;
-  const MIN_CELL_HEIGHT = 60; // Reduced for better mobile sizing
+  const MIN_CELL_HEIGHT = 70; // Optimal for content-fitting
   const MIN_COMPONENT_WIDTH = 2;
   const MIN_COMPONENT_HEIGHT = 2;
 
@@ -61,11 +61,17 @@
     document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
     document.addEventListener('touchend', handleGlobalTouchEnd);
     
+    // Add global click handler for unfocusing components
+    document.addEventListener('click', handleGlobalClick, true);
+    document.addEventListener('touchend', handleGlobalClick, true);
+    
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('touchmove', handleGlobalTouchMove);
       document.removeEventListener('touchend', handleGlobalTouchEnd);
+      document.removeEventListener('click', handleGlobalClick, true);
+      document.removeEventListener('touchend', handleGlobalClick, true);
     };
   });
 
@@ -144,7 +150,7 @@
   // Reset layout function
   function resetLayout() {
     layout.set([
-      { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 6, config: {} }
+      { id: 'calculation-engine', component: 'CalculationEngine', x: 0, y: 0, w: 12, h: 7, config: {} }
     ]);
     saveLayout();
     showComponentSelector = false;
@@ -472,6 +478,39 @@
     );
   }
 
+  // Handle clicking outside components to unfocus
+  function handleBackgroundClick(event) {
+    if ($isEditMode && activeComponent && !isDragging) {
+      // Check if the click target is the grid container or empty space
+      const clickedElement = event.target;
+      const isGridBackground = clickedElement === gridContainer || 
+                              clickedElement.classList.contains('grid-container') ||
+                              clickedElement.closest('.component-container') === null;
+      
+      if (isGridBackground) {
+        activeComponent = null;
+        // Remove active class from all components
+        document.querySelectorAll('.component-container.active').forEach(el => {
+          el.classList.remove('active');
+        });
+        event.stopPropagation();
+      }
+    }
+  }
+
+  // Global click handler for mobile unfocus
+  function handleGlobalClick(event) {
+    if ($isEditMode && activeComponent && !isDragging) {
+      const clickedComponent = event.target.closest('.component-container');
+      if (!clickedComponent) {
+        activeComponent = null;
+        document.querySelectorAll('.component-container.active').forEach(el => {
+          el.classList.remove('active');
+        });
+      }
+    }
+  }
+
   // Handle calculation results
   function handleCalculationComplete(event) {
     calculationResults = event.detail.results;
@@ -480,7 +519,7 @@
     // Auto-expand PricingMatrix when results are available
     const pricingMatrixComponent = $layout.find(item => item.component === 'PricingMatrix');
     if (pricingMatrixComponent && pricingMatrixComponent.h < 8) {
-      updateComponentPosition(pricingMatrixComponent.id, { h: 10 });
+      updateComponentPosition(pricingMatrixComponent.id, { h: 12 });
       saveLayout();
     }
     
@@ -621,21 +660,66 @@
   {/if}
   
   <!-- Enhanced Grid Layout -->
-  <div 
-    class="grid grid-cols-12 gap-3 sm:gap-4 grid-container" 
-    style="grid-auto-rows: {MIN_CELL_HEIGHT}px; min-height: 400px; position: relative;"
+  <button 
+    class="grid grid-cols-12 gap-3 sm:gap-4 grid-container w-full text-left" 
+    style="grid-auto-rows: {MIN_CELL_HEIGHT}px; min-height: 400px; position: relative; background: none; border: none; padding: 0;"
     bind:this={gridContainer}
+    on:click={handleBackgroundClick}
+    on:keydown={(e) => {
+      if (e.key === 'Escape' && $isEditMode && activeComponent) {
+        activeComponent = null;
+        document.querySelectorAll('.component-container.active').forEach(el => {
+          el.classList.remove('active');
+        });
+      }
+    }}
+    aria-label="Component layout grid - click to unfocus active component"
+    disabled={!$isEditMode}
   >
     {#each $layout as item (item.id)}
-      <div
-        class="relative component-container {$isEditMode ? 'edit-mode' : ''} {activeComponent?.id === item.id ? 'active' : ''} {isDragging && activeComponent?.id === item.id ? 'dragging' : ''}"
+      <button
+        class="relative component-container {$isEditMode ? 'edit-mode' : ''} {activeComponent?.id === item.id ? 'active' : ''} {isDragging && activeComponent?.id === item.id ? 'dragging' : ''} w-full h-full text-left p-0 border-0 bg-transparent"
         style={getGridStyle(item)}
         data-component-id={item.id}
-        on:mousedown={(e) => startDrag(e, item)}
-        on:touchstart={(e) => handleTouchStart(e, item, 'drag')}
-        role="button"
-        tabindex="0"
-        aria-label="Drag to reposition component"
+        on:mousedown={(e) => {
+          if ($isEditMode) {
+            e.stopPropagation();
+            activeComponent = item;
+            startDrag(e, item);
+          }
+        }}
+        on:touchstart={(e) => {
+          if ($isEditMode) {
+            e.stopPropagation();
+            activeComponent = item;
+            handleTouchStart(e, item, 'drag');
+          }
+        }}
+        on:click={(e) => {
+          if ($isEditMode) {
+            e.stopPropagation();
+            activeComponent = item;
+          }
+        }}
+        on:keydown={(e) => {
+          if ($isEditMode) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              activeComponent = item;
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              activeComponent = null;
+              document.querySelectorAll('.component-container.active').forEach(el => {
+                el.classList.remove('active');
+              });
+            }
+          }
+        }}
+        aria-label={$isEditMode ? `Select and drag ${componentRegistry[item.component]?.title || item.component} component` : `${componentRegistry[item.component]?.title || item.component} component`}
+        aria-pressed={$isEditMode && activeComponent?.id === item.id ? "true" : "false"}
+        disabled={!$isEditMode}
       >
         {#if $isEditMode}
           <div class="absolute top-2 right-2 z-30 flex gap-2">
@@ -666,10 +750,17 @@
             class="absolute bottom-1 right-1 w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 cursor-se-resize resize-handle opacity-80 hover:opacity-100 transition-all duration-200 rounded-tl-lg flex items-center justify-center"
             on:mousedown={(e) => startResize(e, item)}
             on:touchstart={(e) => handleTouchStart(e, item, 'resize')}
+            on:keydown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                // Focus on resize handle for keyboard users
+              }
+            }}
             title="Drag to resize"
             role="button"
             tabindex="0"
-            aria-label="Drag to resize component"
+            aria-label={`Resize ${componentRegistry[item.component]?.title || item.component} component`}
           >
             <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -699,7 +790,7 @@
             />
           {/if}
         </div>
-      </div>
+      </button>
     {/each}
     
     <!-- Empty state when no components -->
@@ -726,7 +817,7 @@
         </div>
       </div>
     {/if}
-  </div>
+  </button>
 </div>
 
 <!-- Component Selector Modal -->
@@ -747,11 +838,21 @@
     border-radius: 12px;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(75, 85, 99, 0.3);
+    appearance: none;
+    cursor: default;
+  }
+  
+  .component-container:disabled {
+    cursor: default;
   }
   
   .component-container.edit-mode {
     cursor: grab;
     border: 2px dashed transparent;
+  }
+  
+  .component-container.edit-mode:not(:disabled) {
+    cursor: grab;
   }
   
   .component-container.edit-mode:hover {
@@ -775,6 +876,16 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
     z-index: 100;
     border-color: #8b5cf6 !important;
+  }
+  
+  /* Grid container button styling */
+  .grid-container:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+  
+  .grid-container:not(:disabled) {
+    cursor: pointer;
   }
   
   /* Enhanced drag handle styles */
@@ -885,7 +996,7 @@
   /* Mobile-optimized styles */
   @media (max-width: 768px) {
     .component-container.edit-mode {
-      min-height: 120px;
+      min-height: 140px; /* Content-appropriate minimum */
     }
     
     .drag-handle, .resize-handle {
@@ -911,7 +1022,7 @@
     }
     
     .grid-container {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(1, 1fr); /* Single column for mobile */
       gap: 0.75rem;
       padding: 0.5rem;
     }
@@ -932,6 +1043,16 @@
     .component-container {
       border-radius: 16px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Mobile component sizing - content-appropriate */
+    .component-container {
+      min-height: 200px; /* Enough for content visibility */
+    }
+    
+    /* Mobile: All components take full width */
+    .component-container {
+      grid-column: 1 / -1 !important;
     }
   }
   

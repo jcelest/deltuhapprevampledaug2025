@@ -41,16 +41,21 @@
   let componentStart = { x: 0, y: 0, w: 0, h: 0 };
   let gridContainer = null;
   let isDragging = false;
+  let hoveredComponent = null;
+  let draggedElement = null;
 
   // Grid configuration
   const GRID_COLS = 12;
-  const MIN_CELL_HEIGHT = 70; // Optimal for content-fitting
+  const MIN_CELL_HEIGHT = 70;
   const MIN_COMPONENT_WIDTH = 2;
   const MIN_COMPONENT_HEIGHT = 2;
 
   // Mobile gesture state
   let initialPinchDistance = 0;
   let isMultiTouch = false;
+
+  // Check if we're on mobile
+  $: isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
   onMount(() => {
     loadLayout();
@@ -64,6 +69,9 @@
     // Add global click handler for unfocusing components
     document.addEventListener('click', handleGlobalClick, true);
     document.addEventListener('touchend', handleGlobalClick, true);
+    
+    // Auto-expand components after initial load
+    setTimeout(autoExpandComponents, 200);
     
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
@@ -115,6 +123,11 @@
 
   function toggleEditMode() {
     isEditMode.update(mode => !mode);
+    // Clear any hover states when exiting edit mode
+    if (!$isEditMode) {
+      hoveredComponent = null;
+      activeComponent = null;
+    }
   }
 
   function addComponent(componentType) {
@@ -136,7 +149,6 @@
     layout.update(items => [...items, newComponent]);
     saveLayout();
     showComponentSelector = false;
-    console.log('Added component:', componentType, 'at position:', { x: 0, y: newY, ...defaultSize });
   }
 
   // Find the next available row to place a component
@@ -164,14 +176,21 @@
 
   // Enhanced grid style calculation
   function getGridStyle(item) {
+    // On mobile, don't apply grid styles - let CSS handle it
+    if (isMobile) {
+      return '';
+    }
+    
     const colSpan = Math.max(MIN_COMPONENT_WIDTH, Math.min(GRID_COLS, item.w));
     const colStart = Math.max(1, Math.min(GRID_COLS - colSpan + 1, item.x + 1));
     const rowSpan = Math.max(MIN_COMPONENT_HEIGHT, item.h);
     
+    // Use fit-content for height to auto-expand
     return `
       grid-column: ${colStart} / span ${colSpan};
       grid-row: ${item.y + 1} / span ${rowSpan};
       min-height: ${MIN_CELL_HEIGHT * rowSpan}px;
+      height: fit-content;
     `;
   }
 
@@ -194,23 +213,60 @@
     const cellWidth = rect.width / GRID_COLS;
     const cellHeight = MIN_CELL_HEIGHT;
     
-    // Allow negative coordinates during drag, constrain only at the end
     const gridX = Math.floor(relativeX / cellWidth);
     const gridY = Math.floor(relativeY / cellHeight);
     
     return { x: gridX, y: gridY };
   }
 
-  // Find overlapping components for swapping
-  function findOverlappingComponents(x, y, w, h, excludeId = null) {
-    return $layout.filter(item => {
-      if (item.id === excludeId) return false;
-      return !(
-        x >= item.x + item.w ||
-        x + w <= item.x ||
-        y >= item.y + item.h ||
-        y + h <= item.y
-      );
+  // Find component at current cursor position for swapping
+  function findComponentAtPosition(x, y, excludeId = null) {
+    const coords = getEventCoordinates({ clientX: x, clientY: y });
+    const elements = document.elementsFromPoint(coords.x, coords.y);
+    
+    for (const element of elements) {
+      const componentElement = element.closest('.component-container');
+      if (componentElement) {
+        const componentId = componentElement.getAttribute('data-component-id');
+        if (componentId && componentId !== excludeId) {
+          return $layout.find(item => item.id === componentId);
+        }
+      }
+    }
+    return null;
+  }
+
+  // Swap two components' positions
+  function swapComponents(component1Id, component2Id) {
+    layout.update(items => {
+      const comp1Index = items.findIndex(item => item.id === component1Id);
+      const comp2Index = items.findIndex(item => item.id === component2Id);
+      
+      if (comp1Index !== -1 && comp2Index !== -1) {
+        const comp1 = items[comp1Index];
+        const comp2 = items[comp2Index];
+        
+        // For mobile, swap array positions
+        if (isMobile) {
+          const newItems = [...items];
+          newItems[comp1Index] = comp2;
+          newItems[comp2Index] = comp1;
+          return newItems;
+        }
+        
+        // For desktop, swap grid positions
+        const temp = { x: comp1.x, y: comp1.y, w: comp1.w, h: comp1.h };
+        
+        return items.map(item => {
+          if (item.id === component1Id) {
+            return { ...item, x: comp2.x, y: comp2.y, w: comp2.w, h: comp2.h };
+          } else if (item.id === component2Id) {
+            return { ...item, x: temp.x, y: temp.y, w: temp.w, h: temp.h };
+          }
+          return item;
+        });
+      }
+      return items;
     });
   }
 
@@ -234,6 +290,7 @@
     const element = document.querySelector(`[data-component-id="${item.id}"]`);
     if (element) {
       element.classList.add('dragging');
+      draggedElement = element;
     }
   }
 
@@ -255,7 +312,7 @@
     componentStart = { x: item.x, y: item.y, w: item.w, h: item.h };
   }
 
-  // Fixed mouse move handler with smooth positioning and snap detection
+  // Enhanced mouse move handler with swap detection
   function handleGlobalMouseMove(event) {
     if (!activeAction || !activeComponent || !isDragging) return;
     
@@ -264,42 +321,63 @@
     const coords = getEventCoordinates(event);
     
     if (activeAction === 'drag') {
-      // Calculate the difference in pixels, then convert to grid units
-      const deltaX = coords.x - dragStart.x;
-      const deltaY = coords.y - dragStart.y;
+      // Check if we're hovering over another component for swapping
+      const targetComponent = findComponentAtPosition(coords.x, coords.y, activeComponent.id);
       
-      // Convert pixel deltas to grid deltas with more sensitive movement
-      const rect = gridContainer.getBoundingClientRect();
-      const cellWidth = rect.width / GRID_COLS;
-      const cellHeight = MIN_CELL_HEIGHT;
+      // Update hover state
+      if (targetComponent && targetComponent.id !== hoveredComponent?.id) {
+        // Remove previous hover state
+        if (hoveredComponent) {
+          const prevElement = document.querySelector(`[data-component-id="${hoveredComponent.id}"]`);
+          if (prevElement) {
+            prevElement.classList.remove('swap-target');
+          }
+        }
+        
+        // Add new hover state
+        hoveredComponent = targetComponent;
+        const targetElement = document.querySelector(`[data-component-id="${targetComponent.id}"]`);
+        if (targetElement) {
+          targetElement.classList.add('swap-target');
+        }
+      } else if (!targetComponent && hoveredComponent) {
+        // Clear hover state if not over any component
+        const prevElement = document.querySelector(`[data-component-id="${hoveredComponent.id}"]`);
+        if (prevElement) {
+          prevElement.classList.remove('swap-target');
+        }
+        hoveredComponent = null;
+      }
       
-      // Use a smaller threshold for more responsive movement
-      const sensitivity = 0.3; // Adjust this value for sensitivity (0.1 = very sensitive, 0.5 = less sensitive)
-      const gridDeltaX = Math.floor(deltaX / (cellWidth * sensitivity)) * sensitivity;
-      const gridDeltaY = Math.floor(deltaY / (cellHeight * sensitivity)) * sensitivity;
+      // If not swapping, handle normal drag movement (desktop only)
+      if (!hoveredComponent && !isMobile) {
+        const deltaX = coords.x - dragStart.x;
+        const deltaY = coords.y - dragStart.y;
+        
+        const rect = gridContainer.getBoundingClientRect();
+        const cellWidth = rect.width / GRID_COLS;
+        const cellHeight = MIN_CELL_HEIGHT;
+        
+        const sensitivity = 0.3;
+        const gridDeltaX = Math.floor(deltaX / (cellWidth * sensitivity)) * sensitivity;
+        const gridDeltaY = Math.floor(deltaY / (cellHeight * sensitivity)) * sensitivity;
+        
+        const rawNewX = componentStart.x + gridDeltaX;
+        const rawNewY = componentStart.y + gridDeltaY;
+        
+        const snappedX = Math.round(rawNewX);
+        const snappedY = Math.round(rawNewY);
+        
+        const constrainedX = Math.max(0, Math.min(GRID_COLS - activeComponent.w, snappedX));
+        const constrainedY = Math.max(0, snappedY);
+        
+        updateComponentPosition(activeComponent.id, { 
+          x: constrainedX, 
+          y: constrainedY 
+        });
+      }
       
-      // Calculate new position
-      const rawNewX = componentStart.x + gridDeltaX;
-      const rawNewY = componentStart.y + gridDeltaY;
-      
-      // Snap to grid with better precision
-      const snappedX = Math.round(rawNewX);
-      const snappedY = Math.round(rawNewY);
-      
-      // Apply constraints
-      const constrainedX = Math.max(0, Math.min(GRID_COLS - activeComponent.w, snappedX));
-      const constrainedY = Math.max(0, snappedY);
-      
-      // Check for adjacent component snapping
-      const snapPosition = findSnapPosition(constrainedX, constrainedY, activeComponent);
-      
-      // Update position
-      updateComponentPosition(activeComponent.id, { 
-        x: snapPosition.x, 
-        y: snapPosition.y 
-      });
-      
-    } else if (activeAction === 'resize') {
+    } else if (activeAction === 'resize' && !isMobile) {
       const currentGridPos = pixelToGrid(coords.x, coords.y);
       const startGridPos = pixelToGrid(dragStart.x, dragStart.y);
       
@@ -314,62 +392,7 @@
     }
   }
 
-  // Find the best snap position to avoid overlaps and enable close positioning
-  function findSnapPosition(targetX, targetY, draggedComponent) {
-    const snapThreshold = 1; // How close components can be
-    const otherComponents = $layout.filter(item => item.id !== draggedComponent.id);
-    
-    let bestX = targetX;
-    let bestY = targetY;
-    
-    // Check for collisions and find adjacent positions
-    for (const otherComponent of otherComponents) {
-      const wouldOverlap = !(
-        targetX >= otherComponent.x + otherComponent.w ||
-        targetX + draggedComponent.w <= otherComponent.x ||
-        targetY >= otherComponent.y + otherComponent.h ||
-        targetY + draggedComponent.h <= otherComponent.y
-      );
-      
-      if (wouldOverlap) {
-        // Find the best adjacent position
-        const positions = [
-          // Right of the other component
-          { x: otherComponent.x + otherComponent.w, y: targetY },
-          // Left of the other component
-          { x: otherComponent.x - draggedComponent.w, y: targetY },
-          // Below the other component
-          { x: targetX, y: otherComponent.y + otherComponent.h },
-          // Above the other component
-          { x: targetX, y: otherComponent.y - draggedComponent.h }
-        ];
-        
-        // Filter valid positions and find the closest one
-        const validPositions = positions.filter(pos => 
-          pos.x >= 0 && 
-          pos.x + draggedComponent.w <= GRID_COLS && 
-          pos.y >= 0
-        );
-        
-        if (validPositions.length > 0) {
-          // Choose the position closest to the target
-          const closest = validPositions.reduce((closest, pos) => {
-            const currentDistance = Math.abs(pos.x - targetX) + Math.abs(pos.y - targetY);
-            const closestDistance = Math.abs(closest.x - targetX) + Math.abs(closest.y - targetY);
-            return currentDistance < closestDistance ? pos : closest;
-          });
-          
-          bestX = closest.x;
-          bestY = closest.y;
-          break;
-        }
-      }
-    }
-    
-    return { x: bestX, y: bestY };
-  }
-
-  // Enhanced mouse up handler with improved final positioning
+  // Enhanced mouse up handler with swap execution
   function handleGlobalMouseUp(event) {
     if (!isDragging) return;
     
@@ -383,30 +406,39 @@
       }
 
       if (activeAction === 'drag') {
-        // For final positioning, use more precise logic
-        const coords = getEventCoordinates(event);
-        const deltaX = coords.x - dragStart.x;
-        const deltaY = coords.y - dragStart.y;
-        
-        const rect = gridContainer.getBoundingClientRect();
-        const cellWidth = rect.width / GRID_COLS;
-        const cellHeight = MIN_CELL_HEIGHT;
-        
-        const gridDeltaX = Math.round(deltaX / cellWidth);
-        const gridDeltaY = Math.round(deltaY / cellHeight);
-        
-        const finalX = Math.max(0, Math.min(GRID_COLS - activeComponent.w, 
-          componentStart.x + gridDeltaX));
-        const finalY = Math.max(0, componentStart.y + gridDeltaY);
-        
-        // Use snap positioning for final placement
-        const snapPosition = findSnapPosition(finalX, finalY, activeComponent);
-        
-        // Apply final position
-        updateComponentPosition(activeComponent.id, { 
-          x: snapPosition.x, 
-          y: snapPosition.y 
-        });
+        // Check if we should swap components
+        if (hoveredComponent) {
+          // Perform the swap
+          swapComponents(activeComponent.id, hoveredComponent.id);
+          
+          // Clear hover state
+          const hoveredElement = document.querySelector(`[data-component-id="${hoveredComponent.id}"]`);
+          if (hoveredElement) {
+            hoveredElement.classList.remove('swap-target');
+          }
+          hoveredComponent = null;
+        } else if (!isMobile) {
+          // For final positioning (desktop only)
+          const coords = getEventCoordinates(event);
+          const deltaX = coords.x - dragStart.x;
+          const deltaY = coords.y - dragStart.y;
+          
+          const rect = gridContainer.getBoundingClientRect();
+          const cellWidth = rect.width / GRID_COLS;
+          const cellHeight = MIN_CELL_HEIGHT;
+          
+          const gridDeltaX = Math.round(deltaX / cellWidth);
+          const gridDeltaY = Math.round(deltaY / cellHeight);
+          
+          const finalX = Math.max(0, Math.min(GRID_COLS - activeComponent.w, 
+            componentStart.x + gridDeltaX));
+          const finalY = Math.max(0, componentStart.y + gridDeltaY);
+          
+          updateComponentPosition(activeComponent.id, { 
+            x: finalX, 
+            y: finalY 
+          });
+        }
       }
       
       saveLayout();
@@ -414,6 +446,7 @@
     
     activeAction = null;
     activeComponent = null;
+    draggedElement = null;
   }
 
   // Touch event handlers
@@ -481,7 +514,6 @@
   // Handle clicking outside components to unfocus
   function handleBackgroundClick(event) {
     if ($isEditMode && activeComponent && !isDragging) {
-      // Check if the click target is the grid container or empty space
       const clickedElement = event.target;
       const isGridBackground = clickedElement === gridContainer || 
                               clickedElement.classList.contains('grid-container') ||
@@ -489,7 +521,6 @@
       
       if (isGridBackground) {
         activeComponent = null;
-        // Remove active class from all components
         document.querySelectorAll('.component-container.active').forEach(el => {
           el.classList.remove('active');
         });
@@ -518,38 +549,59 @@
     
     // Auto-expand PricingMatrix when results are available
     const pricingMatrixComponent = $layout.find(item => item.component === 'PricingMatrix');
-    if (pricingMatrixComponent && pricingMatrixComponent.h < 8) {
-      updateComponentPosition(pricingMatrixComponent.id, { h: 12 });
-      saveLayout();
+    if (pricingMatrixComponent) {
+      // Set optimal height for content
+      const optimalHeight = 12; // Adjust based on content needs
+      if (pricingMatrixComponent.h < optimalHeight) {
+        updateComponentPosition(pricingMatrixComponent.id, { h: optimalHeight });
+        saveLayout();
+      }
     }
     
-    console.log('Calculation completed:', event.detail);
+    // Auto-expand all components to fit content
+    autoExpandComponents();
   }
 
   function handleResultsCleared() {
     calculationResults = null;
     inputData = {};
     
-    // Auto-shrink PricingMatrix when results are cleared
-    const pricingMatrixComponent = $layout.find(item => item.component === 'PricingMatrix');
-    if (pricingMatrixComponent && pricingMatrixComponent.h > 6) {
-      updateComponentPosition(pricingMatrixComponent.id, { h: 4 });
+    // Keep components at their current size when results are cleared
+    // Users can manually resize if they want
+  }
+  
+  // Auto-expand components to fit their content
+  function autoExpandComponents() {
+    // Wait for DOM updates
+    setTimeout(() => {
+      $layout.forEach(item => {
+        const element = document.querySelector(`[data-component-id="${item.id}"] .component-content`);
+        if (element && !isMobile) {
+          const scrollHeight = element.scrollHeight;
+          const clientHeight = element.clientHeight;
+          
+          // If content is scrollable, expand the component
+          if (scrollHeight > clientHeight) {
+            const currentHeight = item.h * MIN_CELL_HEIGHT;
+            const neededHeight = Math.ceil(scrollHeight / MIN_CELL_HEIGHT);
+            
+            if (neededHeight > item.h) {
+              updateComponentPosition(item.id, { h: neededHeight });
+            }
+          }
+        }
+      });
       saveLayout();
-    }
+    }, 100);
   }
 
   // Handle component requests from CalculationEngine
   function handleRequestComponent(event) {
-    console.log('Component requested:', event.detail);
     const { type } = event.detail;
     if (type === 'PricingMatrix') {
-      // Check if PricingMatrix already exists
       const existingMatrix = $layout.find(item => item.component === 'PricingMatrix');
       if (!existingMatrix) {
-        console.log('Adding PricingMatrix component');
         addComponent('PricingMatrix');
-      } else {
-        console.log('PricingMatrix already exists');
       }
     }
   }
@@ -616,7 +668,7 @@
       </div>
     </div>
     
-    <!-- Mobile Action Buttons: Fun and Simple -->
+    <!-- Mobile Action Buttons -->
     <div class="flex justify-center gap-3 sm:hidden">
       <button 
         on:click={() => showComponentSelector = true}
@@ -650,19 +702,18 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
       </svg>
       <!-- Mobile: Simplified message -->
-      <p class="font-medium text-sm sm:hidden">Edit mode active - Drag components to move and resize</p>
+      <p class="font-medium text-sm sm:hidden">Edit mode - Drag over components to swap positions</p>
       <!-- Desktop: Full message -->
       <div class="hidden sm:block">
-        <p class="font-medium">Edit mode active - Drag to move • Resize from bottom-right • Drop on components to swap</p>
-        <p class="text-sm mt-1 opacity-80">You have full control over component sizes - resize as small or large as needed</p>
+        <p class="font-medium">Edit mode - Drag to move • Drag over another component to swap • Resize from bottom-right</p>
+        <p class="text-sm mt-1 opacity-80">Components will swap positions when you drop one on another</p>
       </div>
     </div>
   {/if}
   
   <!-- Enhanced Grid Layout -->
   <button 
-    class="grid grid-cols-12 gap-3 sm:gap-4 grid-container w-full text-left" 
-    style="grid-auto-rows: {MIN_CELL_HEIGHT}px; min-height: 400px; position: relative; background: none; border: none; padding: 0;"
+    class="grid-container w-full text-left" 
     bind:this={gridContainer}
     on:click={handleBackgroundClick}
     on:keydown={(e) => {
@@ -673,12 +724,12 @@
         });
       }
     }}
-    aria-label="Component layout grid - click to unfocus active component"
+    aria-label="Component layout grid"
     disabled={!$isEditMode}
   >
     {#each $layout as item (item.id)}
       <button
-        class="relative component-container {$isEditMode ? 'edit-mode' : ''} {activeComponent?.id === item.id ? 'active' : ''} {isDragging && activeComponent?.id === item.id ? 'dragging' : ''} w-full h-full text-left p-0 border-0 bg-transparent"
+        class="component-container {$isEditMode ? 'edit-mode' : ''} {activeComponent?.id === item.id ? 'active' : ''} {isDragging && activeComponent?.id === item.id ? 'dragging' : ''}"
         style={getGridStyle(item)}
         data-component-id={item.id}
         on:mousedown={(e) => {
@@ -726,7 +777,7 @@
             <!-- Drag handle -->
             <div 
               class="bg-gray-600 hover:bg-gray-500 text-white p-2 rounded-md shadow-lg cursor-move drag-handle"
-              title="Drag to move"
+              title="Drag to move or swap"
             >
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -745,27 +796,22 @@
             </button>
           </div>
 
-          <!-- Enhanced resize handle -->
-          <div 
-            class="absolute bottom-1 right-1 w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 cursor-se-resize resize-handle opacity-80 hover:opacity-100 transition-all duration-200 rounded-tl-lg flex items-center justify-center"
-            on:mousedown={(e) => startResize(e, item)}
-            on:touchstart={(e) => handleTouchStart(e, item, 'resize')}
-            on:keydown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                // Focus on resize handle for keyboard users
-              }
-            }}
-            title="Drag to resize"
-            role="button"
-            tabindex="0"
-            aria-label={`Resize ${componentRegistry[item.component]?.title || item.component} component`}
-          >
-            <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-          </div>
+          <!-- Enhanced resize handle (desktop only) -->
+          {#if !isMobile}
+            <div 
+              class="absolute bottom-1 right-1 w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 cursor-se-resize resize-handle opacity-80 hover:opacity-100 transition-all duration-200 rounded-tl-lg flex items-center justify-center"
+              on:mousedown={(e) => startResize(e, item)}
+              on:touchstart={(e) => handleTouchStart(e, item, 'resize')}
+              title="Drag to resize"
+              role="button"
+              tabindex="0"
+              aria-label={`Resize ${componentRegistry[item.component]?.title || item.component} component`}
+            >
+              <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+            </div>
+          {/if}
 
           <!-- Grid overlay for visual feedback -->
           <div class="absolute inset-0 grid-overlay pointer-events-none opacity-10">
@@ -774,13 +820,14 @@
         {/if}
         
         <!-- Component content with flexible overflow -->
-        <div class="h-full w-full overflow-auto component-content">
+        <div class="component-content">
           {#if components[item.component]}
             <svelte:component 
               this={components[item.component]} 
               config={item.config}
               {calculationResults}
               {inputData}
+              {isMobile}
               hasPricingMatrix={hasPricingMatrix()}
               on:configChange={(e) => handleConfigChange(item.id, e.detail.config)}
               on:remove={() => handleRemoveComponent(item.id)}
@@ -830,6 +877,20 @@
 {/if}
 
 <style>
+  /* Grid container styles */
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+    grid-auto-rows: minmax(70px, max-content);
+    grid-auto-flow: dense;
+    min-height: 400px;
+    position: relative;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  
   /* Enhanced component container styles */
   .component-container {
     transition: all 0.2s ease;
@@ -840,6 +901,14 @@
     border: 1px solid rgba(75, 85, 99, 0.3);
     appearance: none;
     cursor: default;
+    width: 100%;
+    height: fit-content;
+    min-height: 100%;
+    text-align: left;
+    padding: 0;
+    background-color: transparent;
+    display: flex;
+    flex-direction: column;
   }
   
   .component-container:disabled {
@@ -876,6 +945,47 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
     z-index: 100;
     border-color: #8b5cf6 !important;
+  }
+  
+  /* Swap target indicator */
+  .component-container.swap-target {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.1);
+    animation: pulse 0.5s ease-in-out infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.02);
+    }
+  }
+  
+  /* Component content styling */
+  .component-content {
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Desktop: Auto-expand content by default */
+  @media (min-width: 769px) {
+    .component-content {
+      height: auto !important;
+      min-height: 100%;
+      overflow: visible;
+    }
+    
+    /* Allow scrolling only when manually resized smaller */
+    .component-container.edit-mode .component-content {
+      height: 100%;
+      overflow: auto;
+    }
   }
   
   /* Grid container button styling */
@@ -929,28 +1039,6 @@
     border-radius: 12px;
   }
   
-  /* Enhanced grid container */
-  .grid-container {
-    transform-origin: center center;
-    transition: transform 0.2s ease-out;
-    touch-action: manipulation;
-    position: relative;
-    isolation: isolate;
-  }
-  
-  /* Prevent separation during scroll */
-  .grid-container::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    background: transparent;
-    pointer-events: none;
-    z-index: -1;
-  }
-  
   /* Custom scrollbars for all components */
   :global(.component-container *::-webkit-scrollbar) {
     width: 8px;
@@ -995,36 +1083,56 @@
   
   /* Mobile-optimized styles */
   @media (max-width: 768px) {
-    .component-container.edit-mode {
-      min-height: 140px; /* Content-appropriate minimum */
+    .grid-container {
+      display: flex !important;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0.5rem;
     }
     
-    .drag-handle, .resize-handle {
+    .component-container {
+      min-height: auto !important;
+      height: auto !important;
+      display: flex;
+      flex-direction: column;
+      width: 100% !important;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .component-container.edit-mode {
+      min-height: auto !important;
+    }
+    
+    /* Force component content to be fully visible on mobile */
+    .component-content {
+      height: auto !important;
+      min-height: auto !important;
+      overflow: visible !important;
+      flex: 1 0 auto;
+    }
+    
+    /* Ensure all child components expand properly */
+    .component-content > * {
+      height: auto !important;
+      min-height: auto !important;
+    }
+    
+    /* Disable grid positioning on mobile */
+    .component-container[style*="grid-column"],
+    .component-container[style*="grid-row"] {
+      grid-column: unset !important;
+      grid-row: unset !important;
+    }
+    
+    .drag-handle {
       min-width: 48px;
       min-height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    
-    .drag-handle {
       background: linear-gradient(135deg, #10b981, #059669);
       border-radius: 12px;
-    }
-    
-    .resize-handle {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      border-radius: 12px;
-      bottom: 4px;
-      right: 4px;
-      width: 32px;
-      height: 32px;
-    }
-    
-    .grid-container {
-      grid-template-columns: repeat(1, 1fr); /* Single column for mobile */
-      gap: 0.75rem;
-      padding: 0.5rem;
     }
     
     /* Fun mobile interactions */
@@ -1039,38 +1147,23 @@
       gap: 8px;
     }
     
-    /* Simplified mobile grid */
-    .component-container {
-      border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    /* Swap animation on mobile */
+    .component-container.swap-target {
+      animation: mobile-pulse 0.3s ease-in-out infinite;
+      border-color: #fbbf24 !important;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.4);
     }
     
-    /* Mobile component sizing - content-appropriate */
-    .component-container {
-      min-height: 200px; /* Enough for content visibility */
+    @keyframes mobile-pulse {
+      0%, 100% {
+        transform: scale(1);
+        background: rgba(251, 191, 36, 0.1);
+      }
+      50% {
+        transform: scale(0.98);
+        background: rgba(251, 191, 36, 0.2);
+      }
     }
-    
-    /* Mobile: All components take full width */
-    .component-container {
-      grid-column: 1 / -1 !important;
-    }
-  }
-  
-  /* Original custom scrollbar styles for backward compatibility */
-  :global(.custom-scrollbar::-webkit-scrollbar) {
-    height: 8px;
-    width: 8px;
-  }
-  :global(.custom-scrollbar::-webkit-scrollbar-track) {
-    background-color: #374151;
-    border-radius: 4px;
-  }
-  :global(.custom-scrollbar::-webkit-scrollbar-thumb) {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    border-radius: 4px;
-  }
-  :global(.custom-scrollbar::-webkit-scrollbar-thumb:hover) {
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
   }
   
   /* Accessibility improvements */
@@ -1096,6 +1189,10 @@
     
     .component-container.edit-mode:hover {
       transform: none;
+    }
+    
+    .component-container.swap-target {
+      animation: none;
     }
   }
 </style>

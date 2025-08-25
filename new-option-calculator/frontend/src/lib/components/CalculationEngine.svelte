@@ -363,7 +363,7 @@
     background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%);
     border-radius: 16px;
     padding: 1.25rem;
-    border: 1px solid rgba(6, 182, 212, 0.15);
+    border: 1px solid rgba(167, 139, 250, 0.15);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     height: 100%;
     display: flex;
@@ -377,34 +377,51 @@
   .engine-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+    border-bottom: 1px solid rgba(167, 139, 250, 0.1);
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .header-left {
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 200px;
   }
 
   .engine-title {
     font-size: 1.25rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #fff, #67e8f9);
+    background: linear-gradient(135deg, #fff, #c4b5fd);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin: 0;
   }
 
   .market-status {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.25rem 0.75rem;
     background: rgba(239, 68, 68, 0.1);
     border-radius: 20px;
     border: 1px solid rgba(239, 68, 68, 0.2);
+    font-size: 0.75rem;
+    width: fit-content;
+  }
+
+  .market-status.open {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.2);
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
   }
 
   .market-status.open {
@@ -456,7 +473,7 @@
   }
 
   .toggle-input:checked + .toggle-track {
-    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    background: linear-gradient(135deg, #a78bfa, #c4b5fd);
   }
 
   .toggle-thumb {
@@ -504,7 +521,7 @@
     width: 100%;
     padding: 0.75rem 0.5rem 0.25rem;
     background: rgba(17, 24, 39, 0.6);
-    border: 1px solid rgba(6, 182, 212, 0.2);
+    border: 1px solid rgba(167, 139, 250, 0.2);
     border-radius: 8px;
     color: white;
     font-size: 1rem;
@@ -519,9 +536,9 @@
   }
 
   .input-field:focus {
-    border-color: #06b6d4;
+    border-color: #a78bfa;
     background: rgba(17, 24, 39, 0.8);
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
   }
 
   .input-field::placeholder {
@@ -533,10 +550,23 @@
     top: 2px;
     left: 0.5rem;
     font-size: 0.625rem;
-    color: #06b6d4;
+    color: #a78bfa;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+
+  /* Fix date input text overlap on mobile */
+  .date-input {
+    padding-right: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  @media (max-width: 640px) {
+    .date-input {
+      font-size: 0.8rem;
+      padding: 0.625rem 0.25rem 0.25rem;
+    }
   }
 
   /* Advanced Section */
@@ -548,10 +578,10 @@
   .advanced-toggle {
     width: 100%;
     padding: 0.5rem;
-    background: rgba(6, 182, 212, 0.05);
-    border: 1px solid rgba(6, 182, 212, 0.1);
+    background: rgba(167, 139, 250, 0.05);
+    border: 1px solid rgba(167, 139, 250, 0.1);
     border-radius: 8px;
-    color: #67e8f9;
+    color: #c4b5fd;
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
@@ -562,7 +592,7 @@
   }
 
   .advanced-toggle:hover {
-    background: rgba(6, 182, 212, 0.1);
+    background: rgba(167, 139, 250, 0.1);
   }
 
   .toggle-icon {
@@ -595,7 +625,7 @@
     background: rgba(17, 24, 39, 0.6);
     border-radius: 8px;
     padding: 2px;
-    border: 1px solid rgba(6, 182, 212, 0.1);
+    border: 1px solid rgba(167, 139, 250, 0.1);
   }
 
   .type-btn {
@@ -611,7 +641,7 @@
   }
 
   .type-btn.active {
-    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    background: linear-gradient(135deg, #a78bfa, #c4b5fd);
     color: white;
   }
 
@@ -631,7 +661,7 @@
   .increment-slider {
     flex: 1;
     height: 4px;
-    background: rgba(6, 182, 212, 0.2);
+    background: rgba(167, 139, 250, 0.2);
     border-radius: 2px;
     outline: none;
     -webkit-appearance: none;
@@ -641,7 +671,7 @@
     -webkit-appearance: none;
     width: 16px;
     height: 16px;
-    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    background: linear-gradient(135deg, #a78bfa, #c4b5fd);
     border-radius: 50%;
     cursor: pointer;
     border: 2px solid #111827;
@@ -650,7 +680,7 @@
   .increment-slider::-moz-range-thumb {
     width: 16px;
     height: 16px;
-    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    background: linear-gradient(135deg, #a78bfa, #c4b5fd);
     border-radius: 50%;
     cursor: pointer;
     border: 2px solid #111827;
@@ -658,7 +688,7 @@
 
   .calculate-btn {
     padding: 0.625rem 1.5rem;
-    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    background: linear-gradient(135deg, #a78bfa, #c4b5fd);
     border: none;
     border-radius: 8px;
     color: white;
@@ -674,7 +704,7 @@
 
   .calculate-btn:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
   }
 
   .calculate-btn:disabled {
@@ -720,8 +750,8 @@
   }
 
   .result-card {
-    background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(8, 145, 178, 0.04));
-    border: 1px solid rgba(6, 182, 212, 0.2);
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.08), rgba(196, 181, 253, 0.04));
+    border: 1px solid rgba(167, 139, 250, 0.2);
     border-radius: 12px;
     padding: 1rem;
     display: flex;
@@ -770,7 +800,7 @@
 
   .meta-label {
     font-size: 0.625rem;
-    color: #06b6d4;
+    color: #a78bfa;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 600;
@@ -835,6 +865,18 @@
     .deltuh-calc-engine {
       padding: 1rem;
       gap: 1rem;
+    }
+
+    .engine-header {
+      gap: 0.75rem;
+    }
+
+    .header-left {
+      width: 100%;
+    }
+
+    .market-status {
+      margin-top: 0.25rem;
     }
 
     .engine-title {

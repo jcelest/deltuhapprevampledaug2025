@@ -712,7 +712,7 @@
   {/if}
   
   <!-- Enhanced Grid Layout -->
-  <button 
+  <div 
     class="grid-container w-full text-left" 
     bind:this={gridContainer}
     on:click={handleBackgroundClick}
@@ -724,11 +724,11 @@
         });
       }
     }}
+    role="region"
     aria-label="Component layout grid"
-    disabled={!$isEditMode}
   >
     {#each $layout as item (item.id)}
-      <button
+      <div
         class="component-container {$isEditMode ? 'edit-mode' : ''} {activeComponent?.id === item.id ? 'active' : ''} {isDragging && activeComponent?.id === item.id ? 'dragging' : ''}"
         style={getGridStyle(item)}
         data-component-id={item.id}
@@ -768,9 +768,10 @@
             }
           }
         }}
+        role={$isEditMode ? "button" : "region"}
+        tabindex={$isEditMode ? "0" : "-1"}
         aria-label={$isEditMode ? `Select and drag ${componentRegistry[item.component]?.title || item.component} component` : `${componentRegistry[item.component]?.title || item.component} component`}
-        aria-pressed={$isEditMode && activeComponent?.id === item.id ? "true" : "false"}
-        disabled={!$isEditMode}
+      >
       >
         {#if $isEditMode}
           <div class="absolute top-2 right-2 z-30 flex gap-2">
@@ -844,7 +845,7 @@
             />
           {/if}
         </div>
-      </button>
+      </div>
     {/each}
     
     <!-- Empty state when no components -->

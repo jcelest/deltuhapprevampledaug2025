@@ -154,7 +154,10 @@
   <!-- Compact Header -->
   <div class="engine-header">
     <div class="header-left">
-      <h2 class="engine-title">Calculation Engine</h2>
+      <div class="title-row">
+        <img src="/deltuh logo.svg" alt="Deltuh" class="deltuh-logo" />
+        <h2 class="engine-title">Calculation Engine</h2>
+      </div>
       {#if calculationResults}
         <div class="market-status" class:open={calculationResults.isMarketOpen}>
           <span class="status-dot"></span>
@@ -392,6 +395,19 @@
     min-width: 200px;
   }
 
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .deltuh-logo {
+    height: 24px;
+    width: auto;
+    filter: brightness(1.1);
+    opacity: 0.9;
+  }
+
   .engine-title {
     font-size: 1.25rem;
     font-weight: 700;
@@ -563,6 +579,26 @@
     min-height: 48px;
   }
 
+  /* Force date input to handle text properly */
+  input[type="date"]::-webkit-datetime-edit {
+    padding-top: 0.5rem;
+    padding-bottom: 0.25rem;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-text {
+    padding: 0 0.2rem;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-month-field,
+  input[type="date"]::-webkit-datetime-edit-day-field,
+  input[type="date"]::-webkit-datetime-edit-year-field {
+    padding: 0;
+  }
+
   /* Specific adjustments for date container */
   .date-group {
     min-width: 140px;
@@ -571,10 +607,18 @@
   @media (max-width: 640px) {
     .date-input {
       font-size: 0.875rem;
-      padding: 1rem 0.5rem 0.5rem;  /* Increased top and bottom padding */
-      min-height: 56px;  /* Increased from 52px */
-      line-height: 1.4;  /* More line height */
-      height: 56px;  /* Fixed height to ensure consistent sizing */
+      padding: 1.2rem 0.5rem 0.3rem;  /* More top padding */
+      min-height: 56px;
+      height: 56px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+    }
+    
+    input[type="date"]::-webkit-datetime-edit {
+      padding-top: 0;
+      display: flex;
+      align-items: center;
     }
     
     .date-group {
@@ -583,8 +627,9 @@
     
     .date-group .input-label {
       top: 4px;
-      font-size: 0.55rem;  /* Slightly smaller label */
+      font-size: 0.55rem;
       opacity: 0.9;
+      z-index: 1;
     }
     
     /* Ensure all input fields have consistent height on mobile */

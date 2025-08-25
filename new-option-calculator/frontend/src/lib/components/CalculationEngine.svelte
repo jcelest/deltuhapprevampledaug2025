@@ -17,7 +17,7 @@
 
   // --- State Variables ---
   let ticker = '';
-  let expiration = getTodayDateString(); // Default to today's date
+  let expiration = getTodayDateString();
   let strikePrice = '';
   
   // Data state that will be fetched from our backend
@@ -38,7 +38,7 @@
 
   // Advanced UI toggle
   let autoCalculateOnInput = true;
-  let showEmbeddedResults = false;
+  let showAdvanced = false;
 
   // The URL of our backend server
   const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
@@ -53,10 +53,6 @@
   ];
 
   // --- Functions ---
-
-  /**
-   * Clears any existing results and messages.
-   */
   function clearResults() {
     calculationResults = null;
     infoMessage = '';
@@ -64,9 +60,6 @@
     dispatch('resultsCleared');
   }
 
-  /**
-   * A single function to handle the entire calculation process.
-   */
   async function handleCalculate() {
     if (!ticker || !strikePrice || !expiration) {
       error = 'Please fill in Ticker, Strike Price, and Expiration Date.';
@@ -76,18 +69,14 @@
     clearResults();
     
     try {
-      // Step 1: Fetch market data (stock price and volatility)
       const marketDataResponse = await axios.post(`${API_URL}/api/fetch-market-data`, { ticker });
       
-      // Use user-provided values as overrides if they exist, otherwise use fetched data.
       const finalStockPrice = stockPrice || marketDataResponse.data.currentStockPrice;
       const finalImpliedVolatility = impliedVolatility || marketDataResponse.data.impliedVolatility;
 
-      // Update the input fields with the fetched data for transparency
       stockPrice = finalStockPrice;
       impliedVolatility = finalImpliedVolatility;
 
-      // Step 2: Immediately proceed to generate the option table with all necessary parameters.
       const params = {
         stockPrice: finalStockPrice,
         strikePrice: parseFloat(strikePrice),
@@ -99,15 +88,13 @@
       const calculationResponse = await axios.post(`${API_URL}/api/calculate`, params);
       calculationResults = calculationResponse.data;
 
-      // Set the informational message based on market status.
       const asOfTime = new Date(calculationResponse.data.calculationTime);
       if (calculationResponse.data.isMarketOpen) {
-        infoMessage = `Prices calculated in real-time as of ${asOfTime.toLocaleString()}.`;
+        infoMessage = `Real-time • ${asOfTime.toLocaleTimeString()}`;
       } else {
-        infoMessage = `The market is currently closed. Prices are based on the last market close: ${asOfTime.toLocaleString()}.`;
+        infoMessage = `Closed • Last: ${asOfTime.toLocaleTimeString()}`;
       }
 
-      // Dispatch results to parent components for PricingMatrix
       dispatch('calculationComplete', {
         results: calculationResults,
         inputData: {
@@ -120,51 +107,35 @@
       });
 
     } catch (err) {
-      error = 'Failed to calculate option data. Please check the ticker and try again.';
+      error = 'Failed to calculate. Check ticker and try again.';
       console.error(err);
     } finally {
       isLoading = false;
     }
   }
   
-  /**
-   * A function to re-calculate only if results are already visible.
-   * This is triggered when changing Option Type or Price Increments.
-   */
   function reCalculate() {
     if (calculationResults && autoCalculateOnInput) {
       handleCalculate();
     }
   }
 
-  /**
-   * Request adding a PricingMatrix component
-   */
   function requestPricingMatrix() {
     dispatch('requestComponent', { type: 'PricingMatrix' });
   }
 
-  /**
-   * Get the current price increment index for the slider
-   */
   function getPriceIncrementIndex() {
     return priceIncrementOptions.findIndex(option => option.value === priceIncrement);
   }
 
-  /**
-   * Set price increment from slider index
-   */
   function setPriceIncrementFromIndex(index) {
     priceIncrement = priceIncrementOptions[index].value;
     reCalculate();
   }
 
   // --- Reactive Statements ---
-
-  // Ensure the ticker is always uppercase and contains only letters.
   $: ticker = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
 
-  // This block automatically selects a reasonable price increment based on the stock price.
   $: if (stockPrice && !calculationResults) {
     const price = parseFloat(stockPrice);
     if (price >= 1 && price <= 10) priceIncrement = '0.5';
@@ -174,119 +145,131 @@
     else if (price >= 1000) priceIncrement = '10.0';
   }
 
-  // Auto-calculate when option type changes
   $: if (optionType) {
     reCalculate();
   }
 </script>
 
-<div class="bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl border border-gray-700 space-y-8 h-full overflow-y-auto">
-  <div class="flex items-center justify-between mb-6">
-    <h2 class="text-xl sm:text-2xl font-bold text-white">Calculation Engine</h2>
-    <div class="flex items-center space-x-4">
-      <!-- Custom Toggle for Auto-calculate -->
-      <label class="flex items-center space-x-3 cursor-pointer">
-        <div class="relative">
-          <input
-            type="checkbox"
-            bind:checked={autoCalculateOnInput}
-            class="sr-only"
-          />
-          <div class={`block w-14 h-8 rounded-full transition-colors ${
-            autoCalculateOnInput ? 'bg-indigo-600' : 'bg-gray-600'
-          }`}>
-            <div class={`absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${
-              autoCalculateOnInput ? 'transform translate-x-6' : ''
-            }`} />
-          </div>
-        </div>
-        <span class="font-semibold text-gray-400 text-sm">Auto-calculate</span>
-      </label>
-
-      <!-- Results Toggle -->
+<div class="deltuh-calc-engine">
+  <!-- Compact Header -->
+  <div class="engine-header">
+    <div class="header-left">
+      <h2 class="engine-title">Calculation Engine</h2>
       {#if calculationResults}
-        <button
-          on:click={() => showEmbeddedResults = !showEmbeddedResults}
-          class="text-indigo-400 hover:text-indigo-300 text-sm font-medium transition-colors"
-        >
-          {showEmbeddedResults ? 'Hide Details' : 'Show Details'}
-        </button>
+        <div class="market-status" class:open={calculationResults.isMarketOpen}>
+          <span class="status-dot"></span>
+          <span class="status-text">{infoMessage}</span>
+        </div>
       {/if}
+    </div>
+    <div class="header-controls">
+      <label class="auto-calc-toggle">
+        <input
+          type="checkbox"
+          bind:checked={autoCalculateOnInput}
+          class="toggle-input"
+        />
+        <div class="toggle-track">
+          <div class="toggle-thumb"></div>
+        </div>
+        <span class="toggle-label">Auto</span>
+      </label>
     </div>
   </div>
 
-  <!-- Main Inputs -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <label class="flex flex-col space-y-2">
-      <span class="font-semibold text-gray-400">Ticker</span>
-      <input 
-        bind:value={ticker} 
-        type="text" 
-        placeholder="e.g., AAPL" 
-        class="uppercase bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-white"
-      />
-    </label>
-    <label class="flex flex-col space-y-2">
-      <span class="font-semibold text-gray-400">Strike Price</span>
-      <input 
-        bind:value={strikePrice} 
-        type="number" 
-        class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-white" 
-        placeholder="e.g., 540"
-      />
-    </label>
-    <label class="flex flex-col space-y-2">
-      <span class="font-semibold text-gray-400">Expiration Date</span>
-      <input 
-        bind:value={expiration} 
-        type="date" 
-        class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-white"
-      />
-    </label>
-  </div>
+  <!-- Main Input Grid - Compact Layout -->
+  <div class="input-section">
+    <div class="input-row primary-inputs">
+      <div class="input-group ticker-group">
+        <input 
+          bind:value={ticker} 
+          type="text" 
+          placeholder="TICKER" 
+          class="input-field ticker-input"
+        />
+        <label class="input-label">Symbol</label>
+      </div>
+      
+      <div class="input-group strike-group">
+        <input 
+          bind:value={strikePrice} 
+          type="number" 
+          placeholder="0.00"
+          class="input-field strike-input"
+        />
+        <label class="input-label">Strike</label>
+      </div>
+      
+      <div class="input-group date-group">
+        <input 
+          bind:value={expiration} 
+          type="date" 
+          class="input-field date-input"
+        />
+        <label class="input-label">Expiry</label>
+      </div>
+    </div>
 
-  <!-- Advanced Inputs -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <label class="flex flex-col space-y-2">
-      <span class="font-semibold text-gray-400">Current Stock Price (Optional)</span>
-      <input 
-        bind:value={stockPrice} 
-        type="number" 
-        class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-white" 
-        placeholder="Auto-fetched"
-      />
-    </label>
-    <label class="flex flex-col space-y-2">
-      <span class="font-semibold text-gray-400">Implied Volatility (Optional)</span>
-      <input 
-        bind:value={impliedVolatility} 
-        type="number" 
-        class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-white" 
-        placeholder="Auto-fetched"
-      />
-    </label>
-  </div>
-
-  <hr class="border-gray-700">
-
-  <!-- Calculation Controls -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
-    <label class="flex flex-col space-y-2">
-      <span class="font-semibold text-gray-400">Option Type</span>
-      <select 
-        bind:value={optionType} 
-        on:change={reCalculate}
-        class="bg-gray-900 border border-gray-600 rounded-lg p-3 text-base sm:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition h-[52px] text-white"
+    <!-- Advanced Options - Collapsible -->
+    <div class="advanced-section" class:expanded={showAdvanced}>
+      <button 
+        class="advanced-toggle"
+        on:click={() => showAdvanced = !showAdvanced}
       >
-        <option value="call">Calls</option>
-        <option value="put">Puts</option>
-      </select>
-    </label>
+        <span>Advanced</span>
+        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      
+      {#if showAdvanced}
+        <div class="advanced-inputs">
+          <div class="input-group">
+            <input 
+              bind:value={stockPrice} 
+              type="number" 
+              placeholder="Auto"
+              class="input-field"
+            />
+            <label class="input-label">Stock Price</label>
+          </div>
+          
+          <div class="input-group">
+            <input 
+              bind:value={impliedVolatility} 
+              type="number" 
+              placeholder="Auto"
+              class="input-field"
+            />
+            <label class="input-label">IV %</label>
+          </div>
+        </div>
+      {/if}
+    </div>
 
-    <!-- Price Increment Slider -->
-    <label class="flex flex-col space-y-2">
-      <span class="font-semibold text-gray-400">Price Increments: ${priceIncrementOptions[getPriceIncrementIndex()].label}</span>
-      <div class="relative h-[52px] flex items-center">
+    <!-- Controls Row -->
+    <div class="controls-row">
+      <div class="option-type-selector">
+        <button 
+          class="type-btn" 
+          class:active={optionType === 'call'}
+          on:click={() => optionType = 'call'}
+        >
+          Calls
+        </button>
+        <button 
+          class="type-btn" 
+          class:active={optionType === 'put'}
+          on:click={() => optionType = 'put'}
+        >
+          Puts
+        </button>
+      </div>
+
+      <div class="increment-selector">
+        <label class="increment-label">
+          <span>${priceIncrementOptions[getPriceIncrementIndex()].label}</span>
+        </label>
         <input
           type="range"
           min="0"
@@ -294,210 +277,606 @@
           step="1"
           value={getPriceIncrementIndex()}
           on:input={(e) => setPriceIncrementFromIndex(parseInt(e.target.value))}
-          class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+          class="increment-slider"
         />
-        <div class="flex justify-between text-xs text-gray-500 mt-1 absolute -bottom-6 w-full">
-          {#each priceIncrementOptions as option}
-            <span>${option.label}</span>
-          {/each}
-        </div>
       </div>
-    </label>
 
-    <button 
-      on:click={handleCalculate} 
-      disabled={isLoading} 
-      class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-lg transition-all text-base sm:text-lg h-[52px] disabled:bg-indigo-800 disabled:cursor-not-allowed"
-    >
-      {isLoading ? 'Calculating...' : 'Calculate'}
-    </button>
+      <button 
+        on:click={handleCalculate} 
+        disabled={isLoading} 
+        class="calculate-btn"
+        class:loading={isLoading}
+      >
+        {#if isLoading}
+          <span class="loading-spinner"></span>
+        {:else}
+          Calculate
+        {/if}
+      </button>
+    </div>
   </div>
 
   {#if error}
-    <div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center">
+    <div class="error-message">
+      <svg class="error-icon" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+      </svg>
       {error}
     </div>
   {/if}
 
-  <!-- Simplified Results Section -->
+  <!-- Compact Results Display -->
   {#if calculationResults}
-    <div class="space-y-6 border-t border-gray-700 pt-8">
-      
-      {#if infoMessage && showEmbeddedResults}
-        <div class="bg-gray-800/60 border border-gray-700 text-gray-300 p-4 rounded-lg text-center text-base flex items-center justify-center gap-3">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-          </svg>
-          <span class="font-medium">{infoMessage}</span>
-        </div>
-      {/if}
-
-      <!-- Main Results Card -->
-      <div class="bg-gray-700 p-6 rounded-lg border border-gray-600">
-        <div class="flex items-center justify-between">
-          <div class="flex-1">
-            <h3 class="text-lg sm:text-xl font-semibold text-gray-300 mb-2">
-              Current {optionType === 'call' ? 'Call' : 'Put'} Price
-            </h3>
-            <p class="text-3xl sm:text-4xl font-sans text-white font-bold">
+    <div class="results-section">
+      <div class="result-card">
+        <div class="result-main">
+          <div class="result-price">
+            <span class="price-label">Current {optionType === 'call' ? 'Call' : 'Put'}</span>
+            <span class="price-value">
               {optionType === 'call' ? calculationResults.callPriceRange : calculationResults.putPriceRange}
-            </p>
-            {#if infoMessage && !showEmbeddedResults}
-              <p class="text-sm text-gray-400 mt-2">
-                {calculationResults.isMarketOpen ? 'Real-time pricing' : 'Last close pricing'}
-              </p>
-            {/if}
+            </span>
           </div>
-          <div class="flex flex-col gap-3 ml-6">
-            {#if hasPricingMatrix}
-              <div class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 opacity-75">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                Matrix Already Open
-              </div>
-            {:else}
-              <button 
-                on:click={requestPricingMatrix}
-                class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2"
-              >
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                View Full Matrix
-              </button>
-            {/if}
+          
+          <div class="result-meta">
+            <div class="meta-item">
+              <span class="meta-label">{ticker}</span>
+              <span class="meta-value">${parseFloat(stockPrice).toFixed(2)}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Strike</span>
+              <span class="meta-value">${strikePrice}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">IV</span>
+              <span class="meta-value">{parseFloat(impliedVolatility).toFixed(1)}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          {#if !hasPricingMatrix}
             <button 
-              on:click={() => showEmbeddedResults = !showEmbeddedResults}
-              class="bg-gray-600 hover:bg-gray-500 text-white px-6 py-2 rounded-lg font-medium transition-all text-sm"
+              on:click={requestPricingMatrix}
+              class="matrix-btn"
             >
-              {showEmbeddedResults ? 'Hide Details' : 'Show Details'}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              View Matrix
             </button>
-          </div>
+          {:else}
+            <div class="matrix-status">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Matrix Open
+            </div>
+          {/if}
         </div>
       </div>
-
-      <!-- Quick Stats Grid (always visible) -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="bg-gray-700 p-4 rounded-lg border border-gray-600 text-center">
-          <div class="text-sm text-gray-400 mb-1">Ticker</div>
-          <div class="text-lg font-bold text-white">{ticker}</div>
-        </div>
-        <div class="bg-gray-700 p-4 rounded-lg border border-gray-600 text-center">
-          <div class="text-sm text-gray-400 mb-1">Strike</div>
-          <div class="text-lg font-bold text-white">${strikePrice}</div>
-        </div>
-        <div class="bg-gray-700 p-4 rounded-lg border border-gray-600 text-center">
-          <div class="text-sm text-gray-400 mb-1">Stock Price</div>
-          <div class="text-lg font-bold text-white">${parseFloat(stockPrice).toFixed(2)}</div>
-        </div>
-        <div class="bg-gray-700 p-4 rounded-lg border border-gray-600 text-center">
-          <div class="text-sm text-gray-400 mb-1">Expiration</div>
-          <div class="text-lg font-bold text-white">{expiration}</div>
-        </div>
-      </div>
-
-      <!-- Extended Details (toggleable) -->
-      {#if showEmbeddedResults}
-        <div class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
-              <div class="text-sm text-gray-400 mb-2">Implied Volatility</div>
-              <div class="text-2xl font-bold text-white">{parseFloat(impliedVolatility).toFixed(2)}%</div>
-            </div>
-            <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
-              <div class="text-sm text-gray-400 mb-2">Price Increment</div>
-              <div class="text-2xl font-bold text-white">${priceIncrement}</div>
-            </div>
-          </div>
-
-          <!-- Market Status -->
-          <div class="bg-gray-700 p-4 rounded-lg border border-gray-600">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-sm text-gray-400 mb-1">Market Status</div>
-                <div class="flex items-center gap-2">
-                  <div class={`w-3 h-3 rounded-full ${calculationResults.isMarketOpen ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                  <span class="text-lg font-semibold text-white">
-                    {calculationResults.isMarketOpen ? 'Market Open' : 'Market Closed'}
-                  </span>
-                </div>
-              </div>
-              <div class="text-sm text-gray-400 text-right">
-                <div>Last Updated</div>
-                <div class="text-white">{new Date(calculationResults.calculationTime).toLocaleTimeString()}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="flex gap-3">
-            <button 
-              on:click={handleCalculate}
-              disabled={isLoading}
-              class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-3 px-4 rounded-lg font-semibold transition-all disabled:bg-gray-700"
-            >
-              Recalculate
-            </button>
-            <button 
-              on:click={clearResults}
-              class="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 px-4 rounded-lg font-semibold transition-all"
-            >
-              Clear Results
-            </button>
-          </div>
-        </div>
-      {/if}
     </div>
   {/if}
 </div>
 
 <style>
-  /* Custom slider styles */
-  .slider::-webkit-slider-thumb {
-    appearance: none;
-    height: 20px;
-    width: 20px;
+  .deltuh-calc-engine {
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%);
+    border-radius: 16px;
+    padding: 1.25rem;
+    border: 1px solid rgba(6, 182, 212, 0.15);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+  }
+
+  /* Header Section */
+  .engine-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .engine-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #fff, #67e8f9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+  }
+
+  .market-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 20px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  .market-status.open {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.2);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: #ef4444;
+    animation: pulse 2s infinite;
+  }
+
+  .market-status.open .status-dot {
+    background: #22c55e;
+  }
+
+  .status-text {
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Auto Calculate Toggle */
+  .auto-calc-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     cursor: pointer;
-    border: 2px solid #1f2937;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
 
-  .slider::-webkit-slider-thumb:hover {
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    transform: scale(1.1);
+  .toggle-input {
+    display: none;
   }
 
-  .slider::-moz-range-thumb {
+  .toggle-track {
+    width: 36px;
     height: 20px;
-    width: 20px;
+    background: #374151;
+    border-radius: 10px;
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  .toggle-input:checked + .toggle-track {
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+  }
+
+  .toggle-thumb {
+    width: 16px;
+    height: 16px;
+    background: white;
     border-radius: 50%;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    cursor: pointer;
-    border: 2px solid #1f2937;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
   }
 
-  .slider::-webkit-slider-track {
-    height: 8px;
-    border-radius: 4px;
-    background: linear-gradient(to right, #374151, #6366f1, #374151);
+  .toggle-input:checked + .toggle-track .toggle-thumb {
+    transform: translateX(16px);
   }
 
-  .slider::-moz-range-track {
-    height: 8px;
-    border-radius: 4px;
-    background: linear-gradient(to right, #374151, #6366f1, #374151);
+  .toggle-label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    font-weight: 500;
   }
 
-  /* Focus styles */
-  .slider:focus {
+  /* Input Section */
+  .input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .input-row {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .primary-inputs {
+    grid-template-columns: 1.5fr 1fr 1.25fr;
+  }
+
+  .input-group {
+    position: relative;
+  }
+
+  .input-field {
+    width: 100%;
+    padding: 0.75rem 0.5rem 0.25rem;
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s;
     outline: none;
   }
 
-  .slider:focus::-webkit-slider-thumb {
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+  .ticker-input {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .input-field:focus {
+    border-color: #06b6d4;
+    background: rgba(17, 24, 39, 0.8);
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+  }
+
+  .input-field::placeholder {
+    color: #64748b;
+  }
+
+  .input-label {
+    position: absolute;
+    top: 2px;
+    left: 0.5rem;
+    font-size: 0.625rem;
+    color: #06b6d4;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Advanced Section */
+  .advanced-section {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .advanced-toggle {
+    width: 100%;
+    padding: 0.5rem;
+    background: rgba(6, 182, 212, 0.05);
+    border: 1px solid rgba(6, 182, 212, 0.1);
+    border-radius: 8px;
+    color: #67e8f9;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s;
+  }
+
+  .advanced-toggle:hover {
+    background: rgba(6, 182, 212, 0.1);
+  }
+
+  .toggle-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s;
+  }
+
+  .advanced-section.expanded .toggle-icon {
+    transform: rotate(180deg);
+  }
+
+  .advanced-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  /* Controls Row */
+  .controls-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .option-type-selector {
+    display: flex;
+    background: rgba(17, 24, 39, 0.6);
+    border-radius: 8px;
+    padding: 2px;
+    border: 1px solid rgba(6, 182, 212, 0.1);
+  }
+
+  .type-btn {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.3s;
+  }
+
+  .type-btn.active {
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    color: white;
+  }
+
+  .increment-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .increment-label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    font-weight: 600;
+    min-width: 50px;
+  }
+
+  .increment-slider {
+    flex: 1;
+    height: 4px;
+    background: rgba(6, 182, 212, 0.2);
+    border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+  }
+
+  .increment-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #111827;
+  }
+
+  .increment-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #111827;
+  }
+
+  .calculate-btn {
+    padding: 0.625rem 1.5rem;
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px;
+  }
+
+  .calculate-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+  }
+
+  .calculate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Error Message */
+  .error-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 8px;
+    color: #f87171;
+    font-size: 0.875rem;
+  }
+
+  .error-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  /* Results Section */
+  .results-section {
+    margin-top: auto;
+  }
+
+  .result-card {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(8, 145, 178, 0.04));
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .result-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .result-price {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .price-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .price-value {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1;
+  }
+
+  .result-meta {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .meta-label {
+    font-size: 0.625rem;
+    color: #06b6d4;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+
+  .meta-value {
+    font-size: 0.875rem;
+    color: white;
+    font-weight: 600;
+  }
+
+  .result-actions {
+    display: flex;
+    align-items: center;
+  }
+
+  .matrix-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 8px;
+    color: #22c55e;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .matrix-btn:hover {
+    background: rgba(34, 197, 94, 0.2);
+    transform: translateY(-1px);
+  }
+
+  .matrix-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .matrix-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: rgba(34, 197, 94, 0.05);
+    border: 1px solid rgba(34, 197, 94, 0.1);
+    border-radius: 8px;
+    color: #22c55e;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .matrix-status svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Mobile Responsive */
+  @media (max-width: 640px) {
+    .deltuh-calc-engine {
+      padding: 1rem;
+      gap: 1rem;
+    }
+
+    .engine-title {
+      font-size: 1.125rem;
+    }
+
+    .primary-inputs {
+      grid-template-columns: 1fr;
+    }
+
+    .controls-row {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .option-type-selector {
+      justify-content: stretch;
+    }
+
+    .type-btn {
+      flex: 1;
+    }
+
+    .increment-selector {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      width: 100%;
+    }
+
+    .result-card {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .result-meta {
+      justify-content: space-between;
+    }
+
+    .matrix-btn,
+    .matrix-status {
+      width: 100%;
+      justify-content: center;
+    }
   }
 </style>

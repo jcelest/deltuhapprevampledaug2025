@@ -785,7 +785,14 @@
             </div>
             <!-- Remove button -->
             <button
-              on:click={() => handleRemoveComponent(item.id)}
+              on:click={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                handleRemoveComponent(item.id);
+              }}
+              on:touchstart={(e) => {
+                e.stopPropagation();
+              }}
               class="bg-red-600 hover:bg-red-500 text-white p-2 rounded-md shadow-lg"
               title="Remove component"
               aria-label="Remove component"
@@ -903,7 +910,7 @@
     cursor: default;
     width: 100%;
     height: fit-content;
-    min-height: 100%;
+    min-height: 400px; /* Ensure minimum height for proper centering */
     text-align: left;
     padding: 0;
     background-color: transparent;
@@ -971,6 +978,35 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 300px;
+  }
+  
+  /* Force all component empty states to be centered */
+  :global(.component-content > div) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Target empty state containers specifically */
+  :global(.empty-state),
+  :global(.component-content .flex.flex-col.items-center.justify-center) {
+    flex: 1;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 100%;
+  }
+  
+  /* Ensure PricingMatrix and other components center their empty states */
+  :global(.component-content > div:has(svg):has(p)) {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100%;
+    min-height: 300px;
   }
   
   /* Desktop: Auto-expand content by default */
@@ -1145,6 +1181,14 @@
       top: 8px;
       right: 8px;
       gap: 8px;
+      z-index: 40; /* Ensure buttons are clickable */
+    }
+    
+    /* Ensure remove button is clickable on mobile */
+    .component-container.edit-mode button {
+      position: relative;
+      z-index: 50;
+      touch-action: manipulation;
     }
     
     /* Swap animation on mobile */

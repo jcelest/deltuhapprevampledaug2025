@@ -571,9 +571,10 @@
   @media (max-width: 640px) {
     .date-input {
       font-size: 0.875rem;
-      padding: 0.875rem 0.5rem 0.375rem;
-      min-height: 52px;
-      line-height: 1.2;
+      padding: 1rem 0.5rem 0.5rem;  /* Increased top and bottom padding */
+      min-height: 56px;  /* Increased from 52px */
+      line-height: 1.4;  /* More line height */
+      height: 56px;  /* Fixed height to ensure consistent sizing */
     }
     
     .date-group {
@@ -581,8 +582,19 @@
     }
     
     .date-group .input-label {
-      top: 3px;
-      font-size: 0.6rem;
+      top: 4px;
+      font-size: 0.55rem;  /* Slightly smaller label */
+      opacity: 0.9;
+    }
+    
+    /* Ensure all input fields have consistent height on mobile */
+    .input-field {
+      min-height: 56px;
+      height: 56px;
+    }
+    
+    .ticker-input, .strike-input {
+      padding: 1rem 0.5rem 0.5rem;
     }
   }
 

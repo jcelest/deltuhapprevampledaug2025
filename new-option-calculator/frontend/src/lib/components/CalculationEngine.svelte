@@ -556,16 +556,33 @@
     letter-spacing: 0.05em;
   }
 
-  /* Fix date input text overlap on mobile */
+  /* Fix date input text overlap */
   .date-input {
-    padding-right: 0.5rem;
+    padding-right: 0.75rem;
     font-size: 0.875rem;
+    min-height: 48px;
+  }
+
+  /* Specific adjustments for date container */
+  .date-group {
+    min-width: 140px;
   }
 
   @media (max-width: 640px) {
     .date-input {
-      font-size: 0.8rem;
-      padding: 0.625rem 0.25rem 0.25rem;
+      font-size: 0.875rem;
+      padding: 0.875rem 0.5rem 0.375rem;
+      min-height: 52px;
+      line-height: 1.2;
+    }
+    
+    .date-group {
+      width: 100%;
+    }
+    
+    .date-group .input-label {
+      top: 3px;
+      font-size: 0.6rem;
     }
   }
 

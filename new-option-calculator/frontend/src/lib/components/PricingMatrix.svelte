@@ -703,9 +703,16 @@
     border-right: 2px solid rgba(167, 139, 250, 0.2);
     z-index: 20 !important;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+    /* Ensure proper table cell behavior */
+    display: table-cell !important;
+    vertical-align: middle !important;
     /* Remove conflicting borders */
     border-top: none;
     border-bottom: none;
+    /* Force width and prevent collapse */
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
   }
 
   .stock-price-cell::before {
@@ -717,6 +724,8 @@
     bottom: 0;
     background: #111827 !important;
     z-index: -1;
+    /* Ensure the background covers the entire cell */
+    border-right: 2px solid rgba(167, 139, 250, 0.2);
   }
 
   /* Remove the ::after that was causing issues */
@@ -970,9 +979,8 @@
       min-width: 70px;
       max-width: 70px;
       padding: 0.4rem 0.125rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: table-cell !important;
+      vertical-align: middle !important;
       text-align: center;
       position: sticky !important;
       left: 0 !important;
@@ -1123,9 +1131,8 @@
       min-width: 65px;
       max-width: 65px;
       padding: 0.3rem 0.0625rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: table-cell !important;
+      vertical-align: middle !important;
       text-align: center;
       position: sticky !important;
       left: 0 !important;

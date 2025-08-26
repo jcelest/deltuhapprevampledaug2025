@@ -772,7 +772,6 @@
         tabindex={$isEditMode ? "0" : "-1"}
         aria-label={$isEditMode ? `Select and drag ${componentRegistry[item.component]?.title || item.component} component` : `${componentRegistry[item.component]?.title || item.component} component`}
       >
-      >
         {#if $isEditMode}
           <div class="absolute top-2 right-2 z-30 flex gap-2">
             <!-- Drag handle -->
@@ -872,7 +871,7 @@
         </div>
       </div>
     {/if}
-  </button>
+  </div>
 </div>
 
 <!-- Component Selector Modal -->

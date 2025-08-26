@@ -27,6 +27,7 @@
   // State for advanced options
   let optionType = 'call';
   let priceIncrement = '1.0';
+  let sliderValue = 1; // Track slider position separately
 
   // App state to manage UI feedback
   let isLoading = false;
@@ -124,25 +125,45 @@
     dispatch('requestComponent', { type: 'PricingMatrix' });
   }
 
-  // --- Reactive Statements ---
-  $: ticker = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
-
-  $: if (stockPrice && !calculationResults) {
-    const price = parseFloat(stockPrice);
-    if (price >= 1 && price <= 10) priceIncrement = '0.5';
-    else if (price >= 11 && price <= 99) priceIncrement = '1.0';
-    else if (price >= 100 && price <= 199) priceIncrement = '2.5';
-    else if (price >= 200 && price <= 999) priceIncrement = '5.0';
-    else if (price >= 1000) priceIncrement = '10.0';
-  }
-
-  $: if (optionType) {
+  function handleOptionTypeChange(newType) {
+    optionType = newType;
     reCalculate();
   }
 
-  // Reactive statement to trigger recalculation when priceIncrement changes
-  $: if (priceIncrement && calculationResults && autoCalculateOnInput) {
-    handleCalculate();
+  function handleSliderChange(e) {
+    const index = parseInt(e.target.value);
+    sliderValue = index;
+    priceIncrement = priceIncrementOptions[index].value;
+    if (calculationResults) {
+      handleCalculate();
+    }
+  }
+
+  // --- Reactive Statements ---
+  $: ticker = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
+
+  // Update slider value when priceIncrement changes
+  $: sliderValue = priceIncrementOptions.findIndex(opt => opt.value === priceIncrement);
+
+  // Auto-set price increment based on stock price (only when no results exist)
+  $: if (stockPrice && !calculationResults) {
+    const price = parseFloat(stockPrice);
+    if (price >= 1 && price <= 10) {
+      priceIncrement = '0.5';
+      sliderValue = 0;
+    } else if (price >= 11 && price <= 99) {
+      priceIncrement = '1.0';
+      sliderValue = 1;
+    } else if (price >= 100 && price <= 199) {
+      priceIncrement = '2.5';
+      sliderValue = 2;
+    } else if (price >= 200 && price <= 999) {
+      priceIncrement = '5.0';
+      sliderValue = 3;
+    } else if (price >= 1000) {
+      priceIncrement = '10.0';
+      sliderValue = 4;
+    }
   }
 </script>
 
@@ -257,14 +278,14 @@
         <button 
           class="type-btn" 
           class:active={optionType === 'call'}
-          on:click={() => optionType = 'call'}
+          on:click={() => handleOptionTypeChange('call')}
         >
           Calls
         </button>
         <button 
           class="type-btn" 
           class:active={optionType === 'put'}
-          on:click={() => optionType = 'put'}
+          on:click={() => handleOptionTypeChange('put')}
         >
           Puts
         </button>
@@ -279,11 +300,8 @@
           min="0"
           max={priceIncrementOptions.length - 1}
           step="1"
-          value={priceIncrementOptions.findIndex(opt => opt.value === priceIncrement)}
-          on:input={(e) => {
-            const index = parseInt(e.target.value);
-            priceIncrement = priceIncrementOptions[index].value;
-          }}
+          bind:value={sliderValue}
+          on:input={handleSliderChange}
           class="increment-slider"
           id="increment-slider"
         />
@@ -443,11 +461,6 @@
     display: flex;
     align-items: center;
     margin-left: auto;
-  }
-
-  .market-status.open {
-    background: rgba(34, 197, 94, 0.1);
-    border-color: rgba(34, 197, 94, 0.2);
   }
 
   .status-dot {
@@ -612,7 +625,7 @@
   @media (max-width: 640px) {
     .date-input {
       font-size: 0.875rem;
-      padding: 1.2rem 0.5rem 0.3rem;  /* More top padding */
+      padding: 1.2rem 0.5rem 0.3rem;
       min-height: 56px;
       height: 56px;
       line-height: 1;

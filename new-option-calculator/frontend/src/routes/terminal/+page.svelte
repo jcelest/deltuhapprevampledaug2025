@@ -7,6 +7,7 @@
   import PricingMatrix from '../../lib/components/PricingMatrix.svelte';
   import GreeksDashboard from '../../lib/components/GreeksDashboard.svelte';
   import MarketData from '../../lib/components/MarketData.svelte';
+  import IVRank from '../../lib/components/IVRank.svelte';
   import ComponentSelector from '../../lib/components/ComponentSelector.svelte';
   
   // Component registry
@@ -14,14 +15,16 @@
     CalculationEngine,
     PricingMatrix,
     GreeksDashboard,
-    MarketData
+    MarketData,
+    IVRank
   };
 
   const componentRegistry = {
     CalculationEngine: { title: 'Calculation Engine', defaultSize: { w: 12, h: 7 } },
     PricingMatrix: { title: 'Pricing Matrix', defaultSize: { w: 12, h: 4 } },
     GreeksDashboard: { title: 'Greeks Dashboard', defaultSize: { w: 6, h: 5 } },
-    MarketData: { title: 'Market Data', defaultSize: { w: 6, h: 5 } }
+    MarketData: { title: 'Market Data', defaultSize: { w: 6, h: 5 } },
+    IVRank: { title: 'IV Rank', defaultSize: { w: 6, h: 5 } }
   };
 
   // Layout state
@@ -1490,4 +1493,3 @@
       transform: none;
     }
   }
-</style>

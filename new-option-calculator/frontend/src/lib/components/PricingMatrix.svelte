@@ -644,17 +644,17 @@
     text-align: center;
   }
 
-  .pricing-table .stock-price-header {
+  .stock-price-header {
     position: sticky;
     left: 0;
     background: #1f2937 !important;
-    z-index: 30;
+    z-index: 25;
     text-align: left;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
     border-right: 2px solid rgba(167, 139, 250, 0.2);
   }
 
-  .pricing-table .stock-price-header::before {
+  .stock-price-header::before {
     content: '';
     position: absolute;
     top: 0;
@@ -693,7 +693,7 @@
     border-bottom: 1px solid rgba(167, 139, 250, 0.05);
   }
 
-  .pricing-table .stock-price-cell {
+  .stock-price-cell {
     position: sticky;
     left: 0;
     background: #111827 !important;
@@ -705,7 +705,7 @@
     border-bottom: 1px solid #111827;
   }
 
-  .pricing-table .stock-price-cell::before {
+  .stock-price-cell::before {
     content: '';
     position: absolute;
     top: -1px;
@@ -716,7 +716,7 @@
     z-index: -1;
   }
 
-  .pricing-table .stock-price-cell::after {
+  .stock-price-cell::after {
     content: '';
     position: absolute;
     top: 0;
@@ -727,23 +727,23 @@
     z-index: 16;
   }
 
-  .pricing-table .stock-price-content {
+  .stock-price-content {
     display: flex;
     align-items: center;
     gap: 0.75rem;
   }
 
-  .pricing-table .stock-price-cell .price-value {
+  .stock-price-cell .price-value {
     font-size: 1rem;
     font-weight: 600;
     color: #94a3b8;
   }
 
-  .pricing-table .stock-price-cell.strike .price-value {
+  .stock-price-cell.strike .price-value {
     color: #22c55e;
   }
 
-  .pricing-table .stock-price-cell.current .price-value {
+  .stock-price-cell.current .price-value {
     color: #60a5fa;
   }
 
@@ -946,7 +946,7 @@
     }
 
     /* Mobile table layout fixes */
-    .pricing-table .stock-price-header {
+    .stock-price-header {
       width: 70px;
       min-width: 70px;
       max-width: 70px;
@@ -968,7 +968,7 @@
       min-width: 85px;
     }
 
-    .pricing-table .stock-price-cell {
+    .stock-price-cell {
       width: 70px;
       min-width: 70px;
       max-width: 70px;
@@ -987,7 +987,7 @@
       border-bottom: 1px solid #111827;
     }
 
-    .pricing-table .stock-price-content {
+    .stock-price-content {
       flex-direction: column;
       gap: 0.125rem;
       align-items: center;
@@ -995,7 +995,7 @@
       width: 100%;
     }
 
-    .pricing-table .stock-price-cell .price-value {
+    .stock-price-cell .price-value {
       font-size: 0.7rem;
       line-height: 1;
       text-align: center;
@@ -1100,7 +1100,7 @@
     }
 
     /* Ultra-compact layout for smallest screens */
-    .pricing-table .stock-price-header {
+    .stock-price-header {
       width: 65px;
       min-width: 65px;
       max-width: 65px;
@@ -1121,7 +1121,7 @@
       min-width: 80px;
     }
 
-    .pricing-table .stock-price-cell {
+    .stock-price-cell {
       width: 65px;
       min-width: 65px;
       max-width: 65px;
@@ -1140,11 +1140,11 @@
       border-bottom: 1px solid #111827;
     }
 
-    .pricing-table .stock-price-content {
+    .stock-price-content {
       max-width: 65px;
     }
 
-    .pricing-table .stock-price-cell .price-value {
+    .stock-price-cell .price-value {
       font-size: 0.7rem;
       line-height: 1;
       text-align: center;

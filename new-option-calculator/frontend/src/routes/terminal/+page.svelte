@@ -50,14 +50,15 @@
   const MIN_COMPONENT_WIDTH = 2;
   const MIN_COMPONENT_HEIGHT = 2;
 
-  // Mobile state
+  // Mobile state with proper device detection
+  let isMobile = false;
+  let isLandscape = false;
   let initialPinchDistance = 0;
   let isMultiTouch = false;
 
-  $: isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-
   onMount(() => {
     loadLayout();
+    updateDeviceInfo();
     
     // Add event listeners
     document.addEventListener('mousemove', handleGlobalMouseMove, { passive: false });
@@ -66,6 +67,8 @@
     document.addEventListener('touchend', handleGlobalTouchEnd);
     document.addEventListener('click', handleGlobalClick, true);
     document.addEventListener('touchend', handleGlobalClick, true);
+    window.addEventListener('resize', updateDeviceInfo);
+    window.addEventListener('orientationchange', updateDeviceInfo);
     
     setTimeout(autoExpandComponents, 200);
     
@@ -76,8 +79,26 @@
       document.removeEventListener('touchend', handleGlobalTouchEnd);
       document.removeEventListener('click', handleGlobalClick, true);
       document.removeEventListener('touchend', handleGlobalClick, true);
+      window.removeEventListener('resize', updateDeviceInfo);
+      window.removeEventListener('orientationchange', updateDeviceInfo);
     };
   });
+
+  function updateDeviceInfo() {
+    if (typeof window === 'undefined') return;
+    
+    // Detect if it's actually a mobile/tablet device
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const hasSmallScreen = window.screen.width <= 768 || window.screen.height <= 768;
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    
+    // True mobile detection - not just window width
+    isMobile = isTouchDevice && (hasSmallScreen || isMobileUA);
+    
+    // Detect landscape orientation
+    isLandscape = window.innerWidth > window.innerHeight;
+  }
 
   function loadLayout() {
     try {
@@ -160,8 +181,22 @@
   }
 
   function getGridStyle(item) {
-    if (isMobile) return '';
+    if (isMobile) {
+      if (isLandscape) {
+        // Mobile landscape: use a 2-column flexible grid
+        return `
+          width: calc(50% - 0.375rem);
+          margin-bottom: 0.75rem;
+          display: flex;
+          flex-direction: column;
+        `;
+      } else {
+        // Mobile portrait: full width stacking
+        return '';
+      }
+    }
     
+    // Desktop grid (unchanged)
     const colSpan = Math.max(MIN_COMPONENT_WIDTH, Math.min(GRID_COLS, item.w));
     const colStart = Math.max(1, Math.min(GRID_COLS - colSpan + 1, item.x + 1));
     const rowSpan = Math.max(MIN_COMPONENT_HEIGHT, item.h);
@@ -657,6 +692,7 @@
   <!-- Grid Layout -->
   <div 
     class="grid-container w-full text-left" 
+    class:mobile-landscape={isMobile && isLandscape}
     bind:this={gridContainer}
     on:click={handleBackgroundClick}
     on:keydown={handleGridKeydown}
@@ -1231,6 +1267,15 @@
     border: none;
     padding: 0;
   }
+
+  /* Mobile Landscape Grid Layout */
+  .grid-container.mobile-landscape {
+    display: flex !important;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem;
+  }
   
   .component-container {
     transition: all 0.2s ease;
@@ -1325,7 +1370,8 @@
     border-radius: 12px;
   }
 
-  @media (max-width: 768px) {
+  /* Mobile Portrait Layout */
+  @media (max-width: 768px) and (orientation: portrait) {
     .grid-container {
       display: flex !important;
       flex-direction: column;
@@ -1358,6 +1404,61 @@
       justify-content: center;
       background: linear-gradient(135deg, #10b981, #059669);
       border-radius: 12px;
+    }
+  }
+
+  /* Mobile Landscape Layout */
+  @media (max-width: 1024px) and (orientation: landscape) {
+    .grid-container.mobile-landscape .component-container {
+      width: calc(50% - 0.375rem) !important;
+      min-height: 350px;
+      height: auto !important;
+      margin-bottom: 0;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .grid-container.mobile-landscape .component-content {
+      height: auto !important;
+      min-height: 300px !important;
+      overflow: visible !important;
+      flex: 1 0 auto;
+    }
+
+    .grid-container.mobile-landscape .drag-handle {
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-radius: 12px;
+    }
+
+    /* Ensure components stack nicely in landscape */
+    .grid-container.mobile-landscape {
+      align-content: flex-start;
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    /* Custom scrollbar for mobile landscape */
+    .grid-container.mobile-landscape::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .grid-container.mobile-landscape::-webkit-scrollbar-track {
+      background: rgba(17, 24, 39, 0.5);
+      border-radius: 3px;
+    }
+
+    .grid-container.mobile-landscape::-webkit-scrollbar-thumb {
+      background: rgba(167, 139, 250, 0.3);
+      border-radius: 3px;
+    }
+
+    .grid-container.mobile-landscape::-webkit-scrollbar-thumb:hover {
+      background: rgba(167, 139, 250, 0.5);
     }
   }
 

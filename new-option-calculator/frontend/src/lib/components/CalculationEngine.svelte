@@ -3,7 +3,7 @@
   import axios from 'axios';
 
   const dispatch = createEventDispatcher();
-  export let config = {};
+  export const config = {};
   export let hasPricingMatrix = false;
 
   // This function formats a date object to 'YYYY-MM-DD' for the input field.
@@ -124,15 +124,6 @@
     dispatch('requestComponent', { type: 'PricingMatrix' });
   }
 
-  function getPriceIncrementIndex() {
-    return priceIncrementOptions.findIndex(option => option.value === priceIncrement);
-  }
-
-  function setPriceIncrementFromIndex(index) {
-    priceIncrement = priceIncrementOptions[index].value;
-    reCalculate();
-  }
-
   // --- Reactive Statements ---
   $: ticker = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
 
@@ -147,6 +138,11 @@
 
   $: if (optionType) {
     reCalculate();
+  }
+
+  // Reactive statement to trigger recalculation when priceIncrement changes
+  $: if (priceIncrement && calculationResults && autoCalculateOnInput) {
+    handleCalculate();
   }
 </script>
 
@@ -189,8 +185,9 @@
           type="text" 
           placeholder="TICKER" 
           class="input-field ticker-input"
+          id="ticker-input"
         />
-        <label class="input-label">Symbol</label>
+        <label class="input-label" for="ticker-input">Symbol</label>
       </div>
       
       <div class="input-group strike-group">
@@ -199,8 +196,9 @@
           type="number" 
           placeholder="0.00"
           class="input-field strike-input"
+          id="strike-input"
         />
-        <label class="input-label">Strike</label>
+        <label class="input-label" for="strike-input">Strike</label>
       </div>
       
       <div class="input-group date-group">
@@ -208,8 +206,9 @@
           bind:value={expiration} 
           type="date" 
           class="input-field date-input"
+          id="expiration-input"
         />
-        <label class="input-label">Expiry</label>
+        <label class="input-label" for="expiration-input">Expiry</label>
       </div>
     </div>
 
@@ -233,8 +232,9 @@
               type="number" 
               placeholder="Auto"
               class="input-field"
+              id="stock-price-input"
             />
-            <label class="input-label">Stock Price</label>
+            <label class="input-label" for="stock-price-input">Stock Price</label>
           </div>
           
           <div class="input-group">
@@ -243,8 +243,9 @@
               type="number" 
               placeholder="Auto"
               class="input-field"
+              id="iv-input"
             />
-            <label class="input-label">IV %</label>
+            <label class="input-label" for="iv-input">IV %</label>
           </div>
         </div>
       {/if}
@@ -270,17 +271,21 @@
       </div>
 
       <div class="increment-selector">
-        <label class="increment-label">
-          <span>${priceIncrementOptions[getPriceIncrementIndex()].label}</span>
+        <label class="increment-label" for="increment-slider">
+          <span>${priceIncrementOptions.find(opt => opt.value === priceIncrement)?.label || '1.00'}</span>
         </label>
         <input
           type="range"
           min="0"
           max={priceIncrementOptions.length - 1}
           step="1"
-          value={getPriceIncrementIndex()}
-          on:input={(e) => setPriceIncrementFromIndex(parseInt(e.target.value))}
+          value={priceIncrementOptions.findIndex(opt => opt.value === priceIncrement)}
+          on:input={(e) => {
+            const index = parseInt(e.target.value);
+            priceIncrement = priceIncrementOptions[index].value;
+          }}
           class="increment-slider"
+          id="increment-slider"
         />
       </div>
 

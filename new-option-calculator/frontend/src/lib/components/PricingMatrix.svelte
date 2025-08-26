@@ -945,11 +945,11 @@
       margin: 0 0.75rem 0.75rem;
     }
 
-    /* Optimized mobile table layout */
+    /* Fixed mobile table layout - much smaller stock price column */
     .stock-price-header {
-      width: 80px;
-      min-width: 80px;
-      max-width: 80px;
+      width: 60px;
+      min-width: 60px;
+      max-width: 60px;
       padding: 0.5rem 0.25rem;
       font-size: 0.625rem;
     }
@@ -957,24 +957,24 @@
     .time-header {
       padding: 0.5rem 0.25rem;
       width: auto;
-      min-width: 70px;
+      min-width: 85px;
     }
 
     .stock-price-cell {
-      width: 80px;
-      min-width: 80px;
-      max-width: 80px;
+      width: 60px;
+      min-width: 60px;
+      max-width: 60px;
       padding: 0.5rem 0.25rem;
     }
 
     .stock-price-content {
       flex-direction: column;
       gap: 0.25rem;
-      align-items: flex-start;
+      align-items: center;
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.8125rem;
+      font-size: 0.75rem;
       line-height: 1.1;
     }
 
@@ -985,17 +985,17 @@
 
     .premium-cell {
       min-height: 50px;
-      padding: 0.375rem 0.25rem;
+      padding: 0.5rem 0.25rem;
       width: auto;
     }
 
     .premium-content {
-      min-height: 24px;
+      min-height: 30px;
     }
 
     .premium-value {
-      font-size: 0.6875rem;
-      line-height: 1.1;
+      font-size: 0.75rem;
+      line-height: 1.2;
     }
 
     .analysis-label {
@@ -1004,7 +1004,6 @@
 
     .pricing-table {
       font-size: 0.75rem;
-      table-layout: fixed;
     }
 
     .price-value {
@@ -1012,7 +1011,7 @@
     }
 
     .time-header-content {
-      gap: 0.0625rem;
+      gap: 0.125rem;
     }
 
     .day-label,
@@ -1074,31 +1073,31 @@
       border-radius: 8px;
     }
 
-    /* Extra compact layout for very small screens */
+    /* Compact layout for small screens */
     .stock-price-header {
-      width: 70px;
-      min-width: 70px;
-      max-width: 70px;
+      width: 55px;
+      min-width: 55px;
+      max-width: 55px;
       padding: 0.375rem 0.125rem;
       font-size: 0.5625rem;
       line-height: 1.2;
     }
 
     .time-header {
-      padding: 0.375rem 0.125rem;
-      min-width: 65px;
+      padding: 0.375rem 0.25rem;
+      min-width: 80px;
     }
 
     .stock-price-cell {
-      width: 70px;
-      min-width: 70px;
-      max-width: 70px;
+      width: 55px;
+      min-width: 55px;
+      max-width: 55px;
       padding: 0.375rem 0.125rem;
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.75rem;
-      line-height: 1;
+      font-size: 0.6875rem;
+      line-height: 1.1;
     }
 
     .price-badge {
@@ -1108,17 +1107,17 @@
 
     .premium-cell {
       min-height: 45px;
-      padding: 0.25rem 0.125rem;
+      padding: 0.375rem 0.25rem;
     }
 
     .premium-content {
-      min-height: 20px;
+      min-height: 25px;
       gap: 0.125rem;
     }
 
     .premium-value {
-      font-size: 0.625rem;
-      line-height: 1;
+      font-size: 0.6875rem;
+      line-height: 1.1;
     }
 
     .analysis-label {

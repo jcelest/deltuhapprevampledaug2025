@@ -28,23 +28,53 @@
   <!-- Grid for Dashboard Cards/Widgets -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     
-    <!-- Main Card: Launch Terminal (takes up 2 columns on large screens) -->
-    <a href="/terminal" class="lg:col-span-2 bg-gradient-to-br from-indigo-600 to-purple-700 p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 group transform hover:-translate-y-1 hover:shadow-indigo-500/30 flex flex-col text-left">
-        <div class="flex-grow">
-            <div class="w-14 h-14 sm:w-16 sm:h-16 bg-white/10 rounded-xl flex items-center justify-center mb-6">
-                <!-- SVG Icon for Terminal -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 sm:h-8 sm:w-8 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-            </div>
-            <h3 class="text-2xl sm:text-3xl font-bold text-white mb-3">Option Terminal</h3>
-            <p class="text-indigo-200 text-base sm:text-lg">
-              Access the full, real-time option pricing terminal with advanced analytics.
-            </p>
+    <!-- Main Card: Launch Terminal with Deltuh Branding -->
+    <a href="/terminal" class="terminal-card lg:col-span-2 group">
+      <div class="terminal-card-bg"></div>
+      <div class="terminal-card-content">
+        <div class="terminal-header">
+          <div class="terminal-controls">
+            <div class="terminal-dot red"></div>
+            <div class="terminal-dot yellow"></div>
+            <div class="terminal-dot green"></div>
+          </div>
+          <div class="terminal-title">deltuh.terminal</div>
         </div>
-        <span class="font-semibold text-white group-hover:text-indigo-200 mt-8 text-base sm:text-lg self-start">
-          Launch Terminal &rarr;
-        </span>
+        
+        <div class="terminal-body">
+          <div class="terminal-brand">
+            <img src="/deltuh logo.svg" alt="Deltuh" class="deltuh-logo" />
+            <div class="brand-text">
+              <h3 class="terminal-main-title">Option Terminal</h3>
+              <div class="terminal-cursor-line">
+                <span class="terminal-prompt">$</span>
+                <span class="terminal-command">launch --advanced-analytics</span>
+                <span class="terminal-cursor"></span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="terminal-description">
+            <p class="terminal-text">
+              > Real-time option pricing with advanced Greeks analysis
+            </p>
+            <p class="terminal-text">
+              > Interactive pricing matrix and volatility modeling  
+            </p>
+            <p class="terminal-text">
+              > Professional-grade risk management tools
+            </p>
+          </div>
+          
+          <div class="terminal-launch">
+            <div class="launch-indicator">
+              <span class="status-dot"></span>
+              <span class="launch-text">Ready to launch</span>
+            </div>
+            <span class="launch-arrow">→</span>
+          </div>
+        </div>
+      </div>
     </a>
 
     <!-- Sidebar Cards Container -->
@@ -138,8 +168,280 @@
 {/if}
 
 <style>
-    /* [NEW] Styles for the redesigned saved calculations card */
+    /* Saved calculations card styles */
     .saved-item-card {
         @apply flex items-center bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-xl border border-gray-700 transition-all duration-300 transform hover:scale-105 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10;
+    }
+
+    /* Terminal Card Styles */
+    .terminal-card {
+        position: relative;
+        border-radius: 1rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        transition: all 0.5s;
+        transform: translateY(0);
+        background: linear-gradient(135deg, rgba(88, 28, 135, 0.9) 0%, rgba(59, 7, 100, 0.95) 100%);
+        border: 1px solid rgba(196, 181, 253, 0.3);
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+    }
+
+    .terminal-card:hover {
+        transform: translateY(-4px);
+    }
+
+    .terminal-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(196, 181, 253, 0.15) 0%, rgba(147, 51, 234, 0.1) 100%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 1;
+    }
+
+    .terminal-card:hover::before {
+        opacity: 1;
+    }
+
+    .terminal-card:hover {
+        border-color: rgba(196, 181, 253, 0.6);
+        box-shadow: 0 20px 40px rgba(147, 51, 234, 0.3);
+    }
+
+    .terminal-card-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            radial-gradient(circle at 20% 80%, rgba(196, 181, 253, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.15) 0%, transparent 50%);
+        z-index: 0;
+    }
+
+    .terminal-card-content {
+        position: relative;
+        z-index: 2;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 1.5rem;
+    }
+
+    .terminal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(196, 181, 253, 0.3);
+    }
+
+    .terminal-controls {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .terminal-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        opacity: 0.8;
+    }
+
+    .terminal-dot.red {
+        background: #ef4444;
+    }
+
+    .terminal-dot.yellow {
+        background: #f59e0b;
+    }
+
+    .terminal-dot.green {
+        background: #22c55e;
+    }
+
+    .terminal-title {
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        color: #c4b5fd;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .terminal-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .terminal-brand {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .deltuh-logo {
+        height: 48px;
+        width: auto;
+        filter: brightness(1.2) saturate(1.1);
+        opacity: 0.95;
+        transition: all 0.3s;
+    }
+
+    .group:hover .deltuh-logo {
+        opacity: 1;
+        filter: brightness(1.3) saturate(1.2);
+        transform: scale(1.05);
+    }
+
+    .brand-text {
+        flex: 1;
+    }
+
+    .terminal-main-title {
+        font-size: 1.875rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #ffffff, #e9d5ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .terminal-cursor-line {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.875rem;
+    }
+
+    .terminal-prompt {
+        color: #a855f7;
+        font-weight: 600;
+    }
+
+    .terminal-command {
+        color: #e9d5ff;
+    }
+
+    .terminal-cursor {
+        display: inline-block;
+        width: 8px;
+        height: 16px;
+        background: #c4b5fd;
+        animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+    }
+
+    .terminal-description {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: rgba(59, 7, 100, 0.6);
+        border-radius: 8px;
+        border: 1px solid rgba(196, 181, 253, 0.2);
+    }
+
+    .terminal-text {
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        color: #86efac;
+        font-size: 0.875rem;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .terminal-launch {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 1rem;
+    }
+
+    .launch-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+        animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .launch-text {
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        color: #22c55e;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .launch-arrow {
+        font-size: 1.5rem;
+        color: #c4b5fd;
+        transition: all 0.3s;
+        font-weight: 600;
+    }
+
+    .group:hover .launch-arrow {
+        color: #e9d5ff;
+        transform: translateX(4px);
+    }
+
+    /* Mobile responsive adjustments */
+    @media (max-width: 640px) {
+        .terminal-card-content {
+            padding: 1rem;
+        }
+
+        .terminal-brand {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+            text-align: left;
+        }
+
+        .deltuh-logo {
+            height: 40px;
+        }
+
+        .terminal-main-title {
+            font-size: 1.5rem;
+        }
+
+        .terminal-cursor-line {
+            font-size: 0.75rem;
+        }
+
+        .terminal-text {
+            font-size: 0.75rem;
+        }
+    }
+
+    @media (max-width: 1024px) {
+        .terminal-brand {
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+        }
     }
 </style>

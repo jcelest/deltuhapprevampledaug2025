@@ -159,7 +159,10 @@
       <!-- Header with Market Status -->
       <div class="matrix-header">
         <div class="header-left">
-          <h3 class="matrix-title">Options Pricing Matrix</h3>
+          <div class="title-row">
+            <img src="/deltuh logo.svg" alt="Deltuh" class="deltuh-logo" />
+            <h3 class="matrix-title">Options Pricing Matrix</h3>
+          </div>
           {#if infoMessage}
             <div class="market-status" class:open={calculationResults.isMarketOpen}>
               <span class="status-dot"></span>
@@ -261,8 +264,8 @@
                       class="premium-cell"
                       style={getHeatmapStyle(row.stockPrice, premium, isAnalyzing, entryPrice)}
                     >
-                      {#if isAnalyzing && entryPrice > 0}
-                        <div class="premium-analysis">
+                      <div class="premium-content">
+                        {#if isAnalyzing && entryPrice > 0}
                           {#if isBreakevenCell}
                             <span class="analysis-label breakeven">Breakeven</span>
                           {:else}
@@ -271,15 +274,13 @@
                             </span>
                           {/if}
                           <span class="premium-value" class:breakeven={isBreakevenCell}>{premium}</span>
-                        </div>
-                      {:else if isCurrentPremiumCell}
-                        <div class="premium-current">
+                        {:else if isCurrentPremiumCell}
                           <span class="analysis-label current">Current</span>
                           <span class="premium-value current">{premium}</span>
-                        </div>
-                      {:else}
-                        <span class="premium-value">{premium}</span>
-                      {/if}
+                        {:else}
+                          <span class="premium-value">{premium}</span>
+                        {/if}
+                      </div>
                     </td>
                   {/each}
                 </tr>
@@ -376,6 +377,19 @@
     gap: 0.5rem;
     flex: 1;
     min-width: 200px;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .deltuh-logo {
+    height: 24px;
+    width: auto;
+    filter: brightness(1.1);
+    opacity: 0.9;
   }
 
   .matrix-title {
@@ -759,18 +773,28 @@
     text-align: center;
     color: #94a3b8;
     transition: all 0.3s;
+    min-height: 60px;
+    vertical-align: middle;
+  }
+
+  /* Consistent Premium Content Layout */
+  .premium-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 28px;
+    width: 100%;
   }
 
   .premium-value {
     font-weight: 500;
     color: #94a3b8;
-  }
-
-  .premium-analysis,
-  .premium-current {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .analysis-label {
@@ -778,6 +802,8 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.025em;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .analysis-label.profit {
@@ -807,6 +833,27 @@
   }
 
   /* ITM/OTM Separator */
+  .separator-row {
+    background: rgba(31, 41, 55, 0.3);
+  }
+
+  .separator-cell {
+    padding: 0.5rem 1rem;
+  }
+
+  .separator-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .separator-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   .separator-line {
     flex: 1;
     height: 2px;
@@ -925,6 +972,23 @@
     .date-label {
       font-size: 0.625rem;
     }
+
+    .premium-cell {
+      min-height: 50px;
+      padding: 0.5rem;
+    }
+
+    .premium-content {
+      min-height: 24px;
+    }
+
+    .premium-value {
+      font-size: 0.75rem;
+    }
+
+    .analysis-label {
+      font-size: 0.5625rem;
+    }
   }
 
   @media (max-width: 640px) {
@@ -938,6 +1002,10 @@
 
     .matrix-title {
       font-size: 1.125rem;
+    }
+
+    .deltuh-logo {
+      height: 20px;
     }
 
     .analyzer-toggle {
@@ -972,25 +1040,22 @@
       border-radius: 8px;
     }
 
-    .separator-row {
-      background: rgba(31, 41, 55, 0.3);
+    .premium-cell {
+      min-height: 45px;
+      padding: 0.375rem;
     }
 
-    .separator-cell {
-      padding: 0.5rem 1rem;
+    .premium-content {
+      min-height: 20px;
+      gap: 0.125rem;
     }
 
-    .separator-content {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
+    .premium-value {
+      font-size: 0.6875rem;
     }
 
-    .separator-section {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+    .analysis-label {
+      font-size: 0.5rem;
     }
   }
 </style>

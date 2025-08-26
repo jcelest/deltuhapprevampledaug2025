@@ -947,11 +947,11 @@
 
     /* Mobile table layout fixes */
     .stock-price-header {
-      width: 60px;
-      min-width: 60px;
-      max-width: 60px;
+      width: 65px;
+      min-width: 65px;
+      max-width: 65px;
       padding: 0.5rem 0.25rem;
-      font-size: 0.625rem;
+      font-size: 0.65rem;
       text-align: center;
       line-height: 1.1;
     }
@@ -963,10 +963,10 @@
     }
 
     .stock-price-cell {
-      width: 60px;
-      min-width: 60px;
-      max-width: 60px;
-      padding: 0.375rem 0.125rem;
+      width: 65px;
+      min-width: 65px;
+      max-width: 65px;
+      padding: 0.4rem 0.125rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -979,11 +979,11 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      max-width: 58px;
+      max-width: 63px;
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.625rem;
+      font-size: 0.7rem;
       line-height: 1;
       text-align: center;
       white-space: nowrap;
@@ -1091,11 +1091,11 @@
 
     /* Ultra-compact layout for smallest screens */
     .stock-price-header {
-      width: 55px;
-      min-width: 55px;
-      max-width: 55px;
+      width: 60px;
+      min-width: 60px;
+      max-width: 60px;
       padding: 0.375rem 0.125rem;
-      font-size: 0.5625rem;
+      font-size: 0.6rem;
       line-height: 1;
       text-align: center;
     }
@@ -1106,10 +1106,10 @@
     }
 
     .stock-price-cell {
-      width: 55px;
-      min-width: 55px;
-      max-width: 55px;
-      padding: 0.25rem 0.0625rem;
+      width: 60px;
+      min-width: 60px;
+      max-width: 60px;
+      padding: 0.3rem 0.0625rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1117,11 +1117,11 @@
     }
 
     .stock-price-content {
-      max-width: 53px;
+      max-width: 58px;
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.5625rem;
+      font-size: 0.65rem;
       line-height: 1;
       text-align: center;
       white-space: nowrap;

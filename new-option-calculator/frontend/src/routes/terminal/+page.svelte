@@ -856,7 +856,6 @@
 {/if}
 
 <style>
-<style>
   .terminal-container {
     max-width: 1792px;
     margin: 0 auto;

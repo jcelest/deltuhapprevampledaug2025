@@ -947,11 +947,11 @@
 
     /* Mobile table layout fixes */
     .stock-price-header {
-      width: 70px;
-      min-width: 70px;
-      max-width: 70px;
-      padding: 0.5rem 0.375rem;
-      font-size: 0.6875rem;
+      width: 60px;
+      min-width: 60px;
+      max-width: 60px;
+      padding: 0.5rem 0.25rem;
+      font-size: 0.625rem;
       text-align: center;
       line-height: 1.1;
     }
@@ -963,10 +963,10 @@
     }
 
     .stock-price-cell {
-      width: 70px;
-      min-width: 70px;
-      max-width: 70px;
-      padding: 0.5rem 0.125rem;
+      width: 60px;
+      min-width: 60px;
+      max-width: 60px;
+      padding: 0.375rem 0.125rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -975,17 +975,21 @@
 
     .stock-price-content {
       flex-direction: column;
-      gap: 0.25rem;
+      gap: 0.125rem;
       align-items: center;
       justify-content: center;
       width: 100%;
+      max-width: 58px;
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.75rem;
-      line-height: 1.1;
+      font-size: 0.625rem;
+      line-height: 1;
       text-align: center;
       white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .price-badge {
@@ -1087,12 +1091,12 @@
 
     /* Ultra-compact layout for smallest screens */
     .stock-price-header {
-      width: 65px;
-      min-width: 65px;
-      max-width: 65px;
-      padding: 0.375rem 0.25rem;
-      font-size: 0.625rem;
-      line-height: 1.1;
+      width: 55px;
+      min-width: 55px;
+      max-width: 55px;
+      padding: 0.375rem 0.125rem;
+      font-size: 0.5625rem;
+      line-height: 1;
       text-align: center;
     }
 
@@ -1102,21 +1106,28 @@
     }
 
     .stock-price-cell {
-      width: 65px;
-      min-width: 65px;
-      max-width: 65px;
-      padding: 0.375rem 0.125rem;
+      width: 55px;
+      min-width: 55px;
+      max-width: 55px;
+      padding: 0.25rem 0.0625rem;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
     }
 
+    .stock-price-content {
+      max-width: 53px;
+    }
+
     .stock-price-cell .price-value {
-      font-size: 0.6875rem;
+      font-size: 0.5625rem;
       line-height: 1;
       text-align: center;
       white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .price-badge {

@@ -735,8 +735,12 @@
 
   .stock-price-content {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.75rem;
+    justify-content: center;
+    gap: 0.25rem;
+    height: 100%;
+    width: 100%;
   }
 
   .stock-price-cell .price-value {

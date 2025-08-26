@@ -93,88 +93,464 @@
   });
 </script>
 
-<div class="bg-transparent p-6 h-full flex flex-col">
-  <div class="flex items-center justify-between mb-6 flex-shrink-0">
-    <h2 class="text-xl font-bold text-white">Market Data</h2>
-    {#if marketData.lastUpdate}
-      <span class="text-xs text-gray-400">
-        Updated: {marketData.lastUpdate}
-      </span>
-    {/if}
+<div class="deltuh-market-data">
+  <div class="market-header">
+    <div class="header-left">
+      <div class="title-row">
+        <img src="/deltuh logo.svg" alt="Deltuh" class="deltuh-logo" />
+        <h3 class="market-title">Market Data</h3>
+      </div>
+      {#if marketData.lastUpdate}
+        <div class="update-status">
+          <span class="status-dot"></span>
+          <span class="status-text">Updated: {marketData.lastUpdate}</span>
+        </div>
+      {/if}
+    </div>
   </div>
 
-  <div class="flex-1 overflow-hidden">
+  <div class="market-content">
     {#if isLoading}
-      <div class="h-full flex items-center justify-center">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">Loading market data...</span>
       </div>
     {:else if inputData.ticker}
-      <div class="space-y-4 h-full overflow-y-auto">
-        <!-- Current Price -->
-        <div class="bg-gray-700/80 p-4 rounded-lg border border-gray-600/50 backdrop-blur-sm flex-shrink-0">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-lg font-bold text-white">{inputData.ticker}</h3>
-              <p class="text-2xl font-bold text-white">
-                {formatCurrency(marketData.price)}
-              </p>
+      <div class="data-sections">
+        <!-- Current Price Section -->
+        <div class="price-card">
+          <div class="price-main">
+            <div class="ticker-info">
+              <h4 class="ticker-symbol">{inputData.ticker}</h4>
+              <span class="price-primary">{formatCurrency(marketData.price)}</span>
             </div>
             {#if marketData.change !== null}
-              <div class="text-right">
-                <p class="text-sm {marketData.change >= 0 ? 'text-green-400' : 'text-red-400'}">
+              <div class="price-changes">
+                <span class="change-value" class:positive={marketData.change >= 0} class:negative={marketData.change < 0}>
                   {marketData.change >= 0 ? '+' : ''}{formatCurrency(marketData.change)}
-                </p>
-                <p class="text-sm {marketData.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}">
+                </span>
+                <span class="change-percent" class:positive={marketData.changePercent >= 0} class:negative={marketData.changePercent < 0}>
                   {marketData.changePercent >= 0 ? '+' : ''}{marketData.changePercent?.toFixed(2)}%
-                </p>
+                </span>
               </div>
             {/if}
           </div>
         </div>
 
-        <!-- Trading Stats -->
-        <div class="grid grid-cols-2 gap-3 flex-shrink-0">
-          <div class="bg-gray-700/80 p-3 rounded-lg border border-gray-600/50 backdrop-blur-sm">
-            <p class="text-xs text-gray-400 uppercase tracking-wide">Open</p>
-            <p class="text-sm font-semibold text-white">{formatCurrency(marketData.open)}</p>
+        <!-- Trading Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Open</span>
+            <span class="stat-value">{formatCurrency(marketData.open)}</span>
           </div>
-          <div class="bg-gray-700/80 p-3 rounded-lg border border-gray-600/50 backdrop-blur-sm">
-            <p class="text-xs text-gray-400 uppercase tracking-wide">Volume</p>
-            <p class="text-sm font-semibold text-white">{formatNumber(marketData.volume, 0)}</p>
+          <div class="stat-card">
+            <span class="stat-label">Volume</span>
+            <span class="stat-value">{formatNumber(marketData.volume, 0)}</span>
           </div>
-          <div class="bg-gray-700/80 p-3 rounded-lg border border-gray-600/50 backdrop-blur-sm">
-            <p class="text-xs text-gray-400 uppercase tracking-wide">Day High</p>
-            <p class="text-sm font-semibold text-white">{formatCurrency(marketData.high)}</p>
+          <div class="stat-card">
+            <span class="stat-label">Day High</span>
+            <span class="stat-value">{formatCurrency(marketData.high)}</span>
           </div>
-          <div class="bg-gray-700/80 p-3 rounded-lg border border-gray-600/50 backdrop-blur-sm">
-            <p class="text-xs text-gray-400 uppercase tracking-wide">Day Low</p>
-            <p class="text-sm font-semibold text-white">{formatCurrency(marketData.low)}</p>
+          <div class="stat-card">
+            <span class="stat-label">Day Low</span>
+            <span class="stat-value">{formatCurrency(marketData.low)}</span>
           </div>
         </div>
 
         {#if marketData.marketCap}
-          <div class="bg-gray-700/80 p-3 rounded-lg border border-gray-600/50 backdrop-blur-sm flex-shrink-0">
-            <p class="text-xs text-gray-400 uppercase tracking-wide">Market Cap</p>
-            <p class="text-sm font-semibold text-white">{formatCurrency(marketData.marketCap, 0)}</p>
+          <div class="market-cap-card">
+            <span class="stat-label">Market Cap</span>
+            <span class="stat-value">{formatCurrency(marketData.marketCap, 0)}</span>
           </div>
         {/if}
 
         {#if error}
-          <div class="bg-yellow-900/30 border border-yellow-700 text-yellow-300 p-3 rounded-lg text-sm flex-shrink-0">
-            <p class="font-medium">Limited Data</p>
-            <p>{error}</p>
+          <div class="error-notice">
+            <svg class="error-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            <div class="error-content">
+              <span class="error-title">Limited Data</span>
+              <span class="error-message">{error}</span>
+            </div>
           </div>
         {/if}
       </div>
     {:else}
-      <div class="h-full flex items-center justify-center text-gray-400">
-        <div class="text-center">
-          <svg class="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
-          <p>Enter a ticker to see market data</p>
-        </div>
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+        <p class="empty-text">Enter a ticker to see market data</p>
       </div>
     {/if}
   </div>
 </div>
+
+<style>
+  .deltuh-market-data {
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(167, 139, 250, 0.15);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+  }
+
+  /* Header Section */
+  .market-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1.25rem 1.25rem 0.75rem;
+    border-bottom: 1px solid rgba(167, 139, 250, 0.1);
+  }
+
+  .header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .deltuh-logo {
+    height: 24px;
+    width: auto;
+    filter: brightness(1.1);
+    opacity: 0.9;
+  }
+
+  .market-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #fff, #c4b5fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+  }
+
+  .update-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(167, 139, 250, 0.1);
+    border-radius: 20px;
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    font-size: 0.75rem;
+    width: fit-content;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #a78bfa;
+    animation: pulse 2s infinite;
+  }
+
+  .status-text {
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Main Content */
+  .market-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Loading State */
+  .loading-state {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(167, 139, 250, 0.2);
+    border-top-color: #a78bfa;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    font-size: 0.875rem;
+    color: #94a3b8;
+  }
+
+  /* Data Sections */
+  .data-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  /* Custom scrollbar */
+  .data-sections::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .data-sections::-webkit-scrollbar-track {
+    background: rgba(17, 24, 39, 0.3);
+    border-radius: 3px;
+  }
+
+  .data-sections::-webkit-scrollbar-thumb {
+    background: rgba(167, 139, 250, 0.3);
+    border-radius: 3px;
+  }
+
+  .data-sections::-webkit-scrollbar-thumb:hover {
+    background: rgba(167, 139, 250, 0.5);
+  }
+
+  /* Price Card */
+  .price-card {
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.08), rgba(196, 181, 253, 0.04));
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+
+  .price-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .ticker-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .ticker-symbol {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+  }
+
+  .price-primary {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1;
+  }
+
+  .price-changes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    align-items: flex-end;
+  }
+
+  .change-value,
+  .change-percent {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .change-value.positive,
+  .change-percent.positive {
+    color: #4ade80;
+  }
+
+  .change-value.negative,
+  .change-percent.negative {
+    color: #f87171;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .stat-card,
+  .market-cap-card {
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(167, 139, 250, 0.1);
+    border-radius: 8px;
+    padding: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .market-cap-card {
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(196, 181, 253, 0.02));
+    border-color: rgba(167, 139, 250, 0.15);
+  }
+
+  .stat-label {
+    font-size: 0.625rem;
+    color: #a78bfa;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+
+  .stat-value {
+    font-size: 0.875rem;
+    color: white;
+    font-weight: 600;
+  }
+
+  /* Error Notice */
+  .error-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    border-radius: 8px;
+  }
+
+  .error-icon {
+    width: 20px;
+    height: 20px;
+    color: #fbbf24;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+  }
+
+  .error-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .error-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #fbbf24;
+  }
+
+  .error-message {
+    font-size: 0.8125rem;
+    color: #fde68a;
+  }
+
+  /* Empty State */
+  .empty-state {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #64748b;
+    gap: 1rem;
+  }
+
+  .empty-icon {
+    width: 48px;
+    height: 48px;
+    stroke-width: 1.5;
+  }
+
+  .empty-text {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0;
+  }
+
+  /* Mobile Responsive */
+  @media (max-width: 768px) {
+    .market-header {
+      padding: 1rem;
+    }
+
+    .market-content {
+      padding: 0 1rem 1rem;
+    }
+
+    .price-main {
+      flex-direction: column;
+      text-align: center;
+      align-items: center;
+    }
+
+    .price-changes {
+      align-items: center;
+    }
+
+    .stats-grid {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+
+    .stat-card,
+    .market-cap-card {
+      padding: 0.75rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .deltuh-market-data {
+      border-radius: 12px;
+    }
+
+    .market-title {
+      font-size: 1.125rem;
+    }
+
+    .deltuh-logo {
+      height: 20px;
+    }
+
+    .price-card {
+      padding: 1rem;
+    }
+
+    .ticker-symbol {
+      font-size: 1rem;
+    }
+
+    .price-primary {
+      font-size: 1.5rem;
+    }
+
+    .change-value,
+    .change-percent {
+      font-size: 0.8125rem;
+    }
+
+    .stat-value {
+      font-size: 0.8125rem;
+    }
+  }
+</style>

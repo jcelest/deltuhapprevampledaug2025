@@ -947,13 +947,19 @@
 
     /* Mobile table layout fixes */
     .stock-price-header {
-      width: 65px;
-      min-width: 65px;
-      max-width: 65px;
+      width: 70px;
+      min-width: 70px;
+      max-width: 70px;
       padding: 0.5rem 0.25rem;
       font-size: 0.65rem;
       text-align: center;
       line-height: 1.1;
+      position: sticky;
+      left: 0;
+      background: #1f2937 !important;
+      z-index: 25;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+      border-right: 2px solid rgba(167, 139, 250, 0.2);
     }
 
     .time-header {
@@ -963,14 +969,22 @@
     }
 
     .stock-price-cell {
-      width: 65px;
-      min-width: 65px;
-      max-width: 65px;
+      width: 70px;
+      min-width: 70px;
+      max-width: 70px;
       padding: 0.4rem 0.125rem;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
+      position: sticky;
+      left: 0;
+      background: #111827 !important;
+      z-index: 15;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+      border-right: 2px solid rgba(167, 139, 250, 0.2);
+      border-top: 1px solid #111827;
+      border-bottom: 1px solid #111827;
     }
 
     .stock-price-content {
@@ -979,17 +993,13 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      max-width: 63px;
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.7rem;
+      font-size: 0.6rem;
       line-height: 1;
       text-align: center;
       white-space: nowrap;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
     .price-badge {
@@ -1091,13 +1101,19 @@
 
     /* Ultra-compact layout for smallest screens */
     .stock-price-header {
-      width: 60px;
-      min-width: 60px;
-      max-width: 60px;
+      width: 65px;
+      min-width: 65px;
+      max-width: 65px;
       padding: 0.375rem 0.125rem;
       font-size: 0.6rem;
       line-height: 1;
       text-align: center;
+      position: sticky;
+      left: 0;
+      background: #1f2937 !important;
+      z-index: 25;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+      border-right: 2px solid rgba(167, 139, 250, 0.2);
     }
 
     .time-header {
@@ -1106,28 +1122,33 @@
     }
 
     .stock-price-cell {
-      width: 60px;
-      min-width: 60px;
-      max-width: 60px;
+      width: 65px;
+      min-width: 65px;
+      max-width: 65px;
       padding: 0.3rem 0.0625rem;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
+      position: sticky;
+      left: 0;
+      background: #111827 !important;
+      z-index: 15;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+      border-right: 2px solid rgba(167, 139, 250, 0.2);
+      border-top: 1px solid #111827;
+      border-bottom: 1px solid #111827;
     }
 
     .stock-price-content {
-      max-width: 58px;
+      max-width: 65px;
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.65rem;
+      font-size: 0.55rem;
       line-height: 1;
       text-align: center;
       white-space: nowrap;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
     .price-badge {

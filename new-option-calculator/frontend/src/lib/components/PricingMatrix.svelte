@@ -996,10 +996,10 @@
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.4rem;
-      line-height: 1;
-      text-align: center;
-      white-space: nowrap;
+      font-size: 0.35rem !important;
+      line-height: 1 !important;
+      text-align: center !important;
+      white-space: nowrap !important;
     }
 
     .price-badge {
@@ -1145,10 +1145,10 @@
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.375rem;
-      line-height: 1;
-      text-align: center;
-      white-space: nowrap;
+      font-size: 0.3rem !important;
+      line-height: 1 !important;
+      text-align: center !important;
+      white-space: nowrap !important;
     }
 
     .price-badge {

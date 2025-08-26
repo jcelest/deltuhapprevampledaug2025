@@ -1261,7 +1261,7 @@
   .grid-container {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    gap: 1rem;
+    gap: 0.5rem;
     grid-auto-rows: minmax(70px, max-content);
     grid-auto-flow: dense;
     min-height: 400px;
@@ -1280,13 +1280,14 @@
     padding: 0.5rem;
   }
   
+  /* Clean seamless desktop layout - no containers visible by default */
   .component-container {
     transition: all 0.2s ease;
     position: relative;
-    background: rgba(31, 41, 55, 0.8);
-    border-radius: 12px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(75, 85, 99, 0.3);
+    background: transparent;
+    border-radius: 0;
+    backdrop-filter: none;
+    border: none;
     cursor: default;
     width: 100%;
     height: fit-content;
@@ -1297,23 +1298,28 @@
     flex-direction: column;
   }
   
+  /* Show container styling only in edit mode */
   .component-container.edit-mode {
     cursor: grab;
-    border: 2px dashed transparent;
+    border: 2px dashed rgba(99, 102, 241, 0.3);
+    background: rgba(31, 41, 55, 0.6);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
   }
   
   .component-container.edit-mode:hover {
     border-color: rgba(99, 102, 241, 0.6);
     transform: scale(1.005);
     box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
-    background: rgba(31, 41, 55, 0.9);
+    background: rgba(31, 41, 55, 0.8);
   }
   
   .component-container.active {
     border-color: #6366f1 !important;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
     z-index: 50;
-    background: rgba(31, 41, 55, 0.95);
+    background: rgba(31, 41, 55, 0.9) !important;
+    border-radius: 12px !important;
   }
   
   .component-container.dragging {
@@ -1323,6 +1329,15 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
     z-index: 100;
     border-color: #8b5cf6 !important;
+    background: rgba(31, 41, 55, 0.9) !important;
+    border-radius: 12px !important;
+  }
+
+  /* Swap target styling */
+  .component-container.swap-target {
+    border: 2px solid rgba(34, 197, 94, 0.6) !important;
+    background: rgba(34, 197, 94, 0.1) !important;
+    border-radius: 12px !important;
   }
   
   .component-content {
@@ -1371,6 +1386,20 @@
       linear-gradient(90deg, rgba(99, 102, 241, 0.1) 1px, transparent 1px);
     background-size: 20px 20px;
     border-radius: 12px;
+  }
+
+  /* Mobile styling - keep containers visible on mobile */
+  @media (max-width: 1024px) {
+    .component-container {
+      background: rgba(31, 41, 55, 0.8);
+      border: 1px solid rgba(75, 85, 99, 0.3);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+
+    .grid-container {
+      gap: 1rem;
+    }
   }
 
   /* Mobile Portrait Layout */

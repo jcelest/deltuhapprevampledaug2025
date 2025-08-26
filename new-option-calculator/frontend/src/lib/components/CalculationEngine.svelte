@@ -61,22 +61,32 @@
     dispatch('resultsCleared');
   }
 
-  async function handleCalculate() {
+  async function handleCalculate(skipDataFetch = false) {
     if (!ticker || !strikePrice || !expiration) {
       error = 'Please fill in Ticker, Strike Price, and Expiration Date.';
       return;
     }
     isLoading = true;
-    clearResults();
+    
+    // Only clear results if we're doing a fresh calculation, not just updating increment
+    if (!skipDataFetch) {
+      clearResults();
+    } else {
+      error = ''; // Clear any existing errors
+    }
     
     try {
-      const marketDataResponse = await axios.post(`${API_URL}/api/fetch-market-data`, { ticker });
+      let finalStockPrice = stockPrice;
+      let finalImpliedVolatility = impliedVolatility;
       
-      const finalStockPrice = stockPrice || marketDataResponse.data.currentStockPrice;
-      const finalImpliedVolatility = impliedVolatility || marketDataResponse.data.impliedVolatility;
-
-      stockPrice = finalStockPrice;
-      impliedVolatility = finalImpliedVolatility;
+      // Only fetch market data if we don't already have the values
+      if (!skipDataFetch || !stockPrice || !impliedVolatility) {
+        const marketDataResponse = await axios.post(`${API_URL}/api/fetch-market-data`, { ticker });
+        finalStockPrice = stockPrice || marketDataResponse.data.currentStockPrice;
+        finalImpliedVolatility = impliedVolatility || marketDataResponse.data.impliedVolatility;
+        stockPrice = finalStockPrice;
+        impliedVolatility = finalImpliedVolatility;
+      }
 
       const params = {
         stockPrice: finalStockPrice,
@@ -134,8 +144,10 @@
     const index = parseInt(e.target.value);
     sliderValue = index;
     priceIncrement = priceIncrementOptions[index].value;
+    // Always recalculate if we have results, skip market data fetch since we just need new pricing
     if (calculationResults) {
-      handleCalculate();
+      console.log('Recalculating with new price increment:', priceIncrement);
+      handleCalculate(true); // Skip data fetch, just recalculate with new increment
     }
   }
 
@@ -590,31 +602,42 @@
     letter-spacing: 0.05em;
   }
 
-  /* Fix date input text overlap */
+  /* Enhanced date input fixes for mobile */
   .date-input {
     padding-right: 0.75rem;
     font-size: 0.875rem;
     min-height: 48px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
-  /* Force date input to handle text properly */
+  /* Force date input to handle text properly on all browsers */
   input[type="date"]::-webkit-datetime-edit {
     padding-top: 0.5rem;
     padding-bottom: 0.25rem;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
   input[type="date"]::-webkit-datetime-edit-fields-wrapper {
     padding: 0;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
   input[type="date"]::-webkit-datetime-edit-text {
     padding: 0 0.2rem;
+    line-height: 1;
   }
 
   input[type="date"]::-webkit-datetime-edit-month-field,
   input[type="date"]::-webkit-datetime-edit-day-field,
   input[type="date"]::-webkit-datetime-edit-year-field {
     padding: 0;
+    line-height: 1;
   }
 
   /* Specific adjustments for date container */
@@ -624,19 +647,48 @@
 
   @media (max-width: 640px) {
     .date-input {
-      font-size: 0.875rem;
-      padding: 1.2rem 0.5rem 0.3rem;
+      font-size: 0.8rem;
+      padding: 1rem 0.5rem 0.4rem;
       min-height: 56px;
       height: 56px;
       line-height: 1;
       display: flex;
       align-items: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     input[type="date"]::-webkit-datetime-edit {
       padding-top: 0;
+      padding-bottom: 0;
       display: flex;
       align-items: center;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    input[type="date"]::-webkit-datetime-edit-text {
+      line-height: 1;
+      white-space: nowrap;
+      font-size: inherit;
+    }
+
+    input[type="date"]::-webkit-datetime-edit-month-field,
+    input[type="date"]::-webkit-datetime-edit-day-field,
+    input[type="date"]::-webkit-datetime-edit-year-field {
+      line-height: 1;
+      white-space: nowrap;
+      font-size: inherit;
     }
     
     .date-group {

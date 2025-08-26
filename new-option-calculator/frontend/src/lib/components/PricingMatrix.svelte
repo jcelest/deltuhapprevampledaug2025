@@ -945,13 +945,14 @@
       margin: 0 0.75rem 0.75rem;
     }
 
-    /* Fixed mobile table layout - much smaller stock price column */
+    /* Fixed mobile table layout - properly centered stock price column */
     .stock-price-header {
       width: 60px;
       min-width: 60px;
       max-width: 60px;
       padding: 0.5rem 0.25rem;
       font-size: 0.625rem;
+      text-align: center;
     }
 
     .time-header {
@@ -964,23 +965,31 @@
       width: 60px;
       min-width: 60px;
       max-width: 60px;
-      padding: 0.5rem 0.25rem;
+      padding: 0.5rem 0.125rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
     }
 
     .stock-price-content {
       flex-direction: column;
       gap: 0.25rem;
       align-items: center;
+      justify-content: center;
+      width: 100%;
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.75rem;
+      font-size: 0.6875rem;
       line-height: 1.1;
+      text-align: center;
     }
 
     .price-badge {
-      font-size: 0.5rem;
-      padding: 0.125rem 0.25rem;
+      font-size: 0.4375rem;
+      padding: 0.0625rem 0.1875rem;
+      text-align: center;
     }
 
     .premium-cell {
@@ -1073,14 +1082,15 @@
       border-radius: 8px;
     }
 
-    /* Compact layout for small screens */
+    /* Even more compact layout for very small screens */
     .stock-price-header {
       width: 55px;
       min-width: 55px;
       max-width: 55px;
-      padding: 0.375rem 0.125rem;
+      padding: 0.375rem 0.0625rem;
       font-size: 0.5625rem;
-      line-height: 1.2;
+      line-height: 1.1;
+      text-align: center;
     }
 
     .time-header {
@@ -1092,17 +1102,24 @@
       width: 55px;
       min-width: 55px;
       max-width: 55px;
-      padding: 0.375rem 0.125rem;
+      padding: 0.25rem 0.0625rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.6875rem;
-      line-height: 1.1;
+      font-size: 0.625rem;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
     }
 
     .price-badge {
-      font-size: 0.4375rem;
-      padding: 0.0625rem 0.1875rem;
+      font-size: 0.375rem;
+      padding: 0.0625rem 0.125rem;
+      text-align: center;
     }
 
     .premium-cell {

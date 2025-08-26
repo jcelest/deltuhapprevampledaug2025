@@ -996,7 +996,7 @@
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.35rem !important;
+      font-size: 0.5rem !important;
       line-height: 1 !important;
       text-align: center !important;
       white-space: nowrap !important;
@@ -1145,7 +1145,7 @@
     }
 
     .stock-price-cell .price-value {
-      font-size: 0.3rem !important;
+      font-size: 0.5rem !important;
       line-height: 1 !important;
       text-align: center !important;
       white-space: nowrap !important;

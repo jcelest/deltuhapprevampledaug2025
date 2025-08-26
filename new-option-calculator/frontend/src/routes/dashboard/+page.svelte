@@ -18,18 +18,18 @@
 </script>
 
 {#if $user}
-<div class="space-y-8 sm:space-y-12">
-  <!-- Main Welcome Header -->
-  <div class="text-center">
-    <h1 class="text-4xl sm:text-5xl font-extrabold text-white">Welcome to your Dashboard</h1>
-    <p class="text-lg sm:text-xl text-gray-400 mt-4">Here's your command center.</p>
+<div class="dashboard-container">
+  <!-- Main Welcome Header - Compact on Mobile -->
+  <div class="welcome-header">
+    <h1 class="welcome-title">Welcome to your Dashboard</h1>
+    <p class="welcome-subtitle">Here's your command center.</p>
   </div>
 
   <!-- Grid for Dashboard Cards/Widgets -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <div class="dashboard-grid">
     
     <!-- Main Card: Launch Terminal with Deltuh Branding -->
-    <a href="/terminal" class="terminal-card lg:col-span-2 group">
+    <a href="/terminal" class="terminal-card group">
       <div class="terminal-card-bg"></div>
       <div class="terminal-card-content">
         <div class="terminal-header">
@@ -78,89 +78,89 @@
     </a>
 
     <!-- Sidebar Cards Container -->
-    <div class="space-y-8">
+    <div class="sidebar-cards">
         <!-- Card 2: Subscription Status -->
-        <a href="/subscription" class="bg-gray-800 p-6 sm:p-8 rounded-2xl border border-gray-700 hover:border-gray-600 transition-all duration-300 flex flex-col text-left group">
-           <div class="flex-grow">
-               <div class="flex items-center space-x-4 mb-4">
-                   <div class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+        <a href="/subscription" class="sidebar-card group">
+           <div class="card-content">
+               <div class="card-header">
+                   <div class="card-icon">
                        <!-- SVG Icon for Subscription -->
-                       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="icon subscription-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                        </svg>
                    </div>
-                   <h3 class="text-xl sm:text-2xl font-semibold text-white">Subscription</h3>
+                   <h3 class="card-title">Subscription</h3>
                </div>
-               <p class="text-gray-400">
-                 Your current plan: <span class="font-semibold text-green-400">Premium</span>
+               <p class="card-description">
+                 Your current plan: <span class="plan-status">Premium</span>
                </p>
            </div>
-           <span class="font-semibold text-indigo-400 group-hover:text-indigo-300 mt-6 text-base self-start">
+           <span class="card-arrow">
                Upgrade Plan &rarr;
            </span>
         </a>
 
         <!-- Card 3: Profile Settings -->
-         <a href="/settings" class="bg-gray-800 p-6 sm:p-8 rounded-2xl border border-gray-700 hover:border-gray-600 transition-all duration-300 flex flex-col text-left group">
-            <div class="flex-grow">
-                <div class="flex items-center space-x-4 mb-4">
-                    <div class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+         <a href="/settings" class="sidebar-card group">
+            <div class="card-content">
+                <div class="card-header">
+                    <div class="card-icon">
                         <!-- SVG Icon for Profile -->
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon profile-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                     </div>
-                    <h3 class="text-xl sm:text-2xl font-semibold text-white">Profile</h3>
+                    <h3 class="card-title">Profile</h3>
                 </div>
-                <p class="text-gray-400">
+                <p class="card-description">
                   Update your email or change your password.
                 </p>
             </div>
-            <span class="font-semibold text-indigo-400 group-hover:text-indigo-300 mt-6 text-base self-start">
+            <span class="card-arrow">
                 Go to Settings &rarr;
             </span>
          </a>
     </div>
   </div>
 
-  <!-- [MODIFIED] Saved Calculations Section -->
-  <div class="bg-gray-800 p-6 sm:p-8 rounded-2xl border border-gray-700">
-    <div class="flex items-center space-x-4 mb-6">
-        <div class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+  <!-- Saved Calculations Section - Compact -->
+  <div class="saved-calculations">
+    <div class="saved-header">
+        <div class="saved-icon">
             <!-- SVG Icon for Saved -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
             </svg>
         </div>
-        <h3 class="text-2xl sm:text-3xl font-bold text-white">Saved Calculations</h3>
+        <h3 class="saved-title">Saved Calculations</h3>
     </div>
     
-    <!-- [MODIFIED] Grid layout for saved calculations -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Compact saved calculations grid -->
+    <div class="saved-grid">
         <!-- Example of a saved item -->
-        <a href="#" class="saved-item-card group">
-            <div class="flex-grow">
-                <p class="font-bold text-white group-hover:text-indigo-300 transition-colors">AAPL - Iron Condor</p>
-                <p class="text-sm text-gray-400">Saved on: 2023-10-27</p>
+        <a href="#" class="saved-item group">
+            <div class="saved-content">
+                <p class="saved-name">AAPL - Iron Condor</p>
+                <p class="saved-date">2023-10-27</p>
             </div>
-            <span class="text-indigo-400 group-hover:text-white transition-colors">&rarr;</span>
+            <span class="saved-arrow">&rarr;</span>
         </a>
-        <a href="#" class="saved-item-card group">
-            <div class="flex-grow">
-                <p class="font-bold text-white group-hover:text-indigo-300 transition-colors">TSLA - Long Call</p>
-                <p class="text-sm text-gray-400">Saved on: 2023-10-26</p>
+        <a href="#" class="saved-item group">
+            <div class="saved-content">
+                <p class="saved-name">TSLA - Long Call</p>
+                <p class="saved-date">2023-10-26</p>
             </div>
-            <span class="text-indigo-400 group-hover:text-white transition-colors">&rarr;</span>
+            <span class="saved-arrow">&rarr;</span>
         </a>
-        <a href="#" class="saved-item-card group">
-            <div class="flex-grow">
-                <p class="font-bold text-white group-hover:text-indigo-300 transition-colors">NVDA - Vertical Spread</p>
-                <p class="text-sm text-gray-400">Saved on: 2023-10-25</p>
+        <a href="#" class="saved-item group">
+            <div class="saved-content">
+                <p class="saved-name">NVDA - Vertical Spread</p>
+                <p class="saved-date">2023-10-25</p>
             </div>
-            <span class="text-indigo-400 group-hover:text-white transition-colors">&rarr;</span>
+            <span class="saved-arrow">&rarr;</span>
         </a>
-        <div class="text-center py-6 md:col-span-2">
-            <p class="text-gray-500">No more saved calculations.</p>
+        <div class="no-more-text">
+            <p>No more saved calculations.</p>
         </div>
     </div>
   </div>
@@ -168,12 +168,77 @@
 {/if}
 
 <style>
-    /* Saved calculations card styles */
-    .saved-item-card {
-        @apply flex items-center bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-xl border border-gray-700 transition-all duration-300 transform hover:scale-105 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10;
+    .dashboard-container {
+        max-width: 1792px;
+        margin: 0 auto;
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
     }
 
-    /* Terminal Card Styles */
+    @media (min-width: 640px) {
+        .dashboard-container {
+            padding: 1rem;
+            gap: 2rem;
+        }
+    }
+
+    /* Welcome Header - Compact on Mobile */
+    .welcome-header {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    @media (min-width: 640px) {
+        .welcome-header {
+            margin-bottom: 2rem;
+        }
+    }
+
+    .welcome-title {
+        font-size: 1.875rem;
+        font-weight: 800;
+        color: white;
+        margin: 0;
+    }
+
+    @media (min-width: 640px) {
+        .welcome-title {
+            font-size: 3rem;
+        }
+    }
+
+    .welcome-subtitle {
+        font-size: 0.875rem;
+        color: #9ca3af;
+        margin: 0.25rem 0 0 0;
+    }
+
+    @media (min-width: 640px) {
+        .welcome-subtitle {
+            font-size: 1.25rem;
+            margin-top: 1rem;
+        }
+    }
+
+    /* Dashboard Grid Layout */
+    .dashboard-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    @media (min-width: 1024px) {
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+    }
+
+    /* Terminal Card - Compact on Mobile */
     .terminal-card {
         position: relative;
         border-radius: 1rem;
@@ -184,10 +249,19 @@
         border: 1px solid rgba(196, 181, 253, 0.3);
         overflow: hidden;
         backdrop-filter: blur(10px);
+        min-height: 200px;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-card {
+            min-height: 300px;
+        }
     }
 
     .terminal-card:hover {
         transform: translateY(-4px);
+        border-color: rgba(196, 181, 253, 0.6);
+        box-shadow: 0 20px 40px rgba(147, 51, 234, 0.3);
     }
 
     .terminal-card::before {
@@ -205,11 +279,6 @@
 
     .terminal-card:hover::before {
         opacity: 1;
-    }
-
-    .terminal-card:hover {
-        border-color: rgba(196, 181, 253, 0.6);
-        box-shadow: 0 20px 40px rgba(147, 51, 234, 0.3);
     }
 
     .terminal-card-bg {
@@ -230,28 +299,54 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        padding: 1.5rem;
+        padding: 1rem;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-card-content {
+            padding: 1.5rem;
+        }
     }
 
     .terminal-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 1.5rem;
-        padding-bottom: 0.75rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
         border-bottom: 1px solid rgba(196, 181, 253, 0.3);
+    }
+
+    @media (min-width: 640px) {
+        .terminal-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+        }
     }
 
     .terminal-controls {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.375rem;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-controls {
+            gap: 0.5rem;
+        }
     }
 
     .terminal-dot {
-        width: 12px;
-        height: 12px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
         opacity: 0.8;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+        }
     }
 
     .terminal-dot.red {
@@ -269,29 +364,54 @@
     .terminal-title {
         font-family: 'JetBrains Mono', 'Fira Code', monospace;
         color: #c4b5fd;
-        font-size: 0.875rem;
+        font-size: 0.75rem;
         font-weight: 500;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-title {
+            font-size: 0.875rem;
+        }
     }
 
     .terminal-body {
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 1.5rem;
+        gap: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-body {
+            gap: 1.5rem;
+        }
     }
 
     .terminal-brand {
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-brand {
+            gap: 1rem;
+        }
     }
 
     .deltuh-logo {
-        height: 48px;
+        height: 32px;
         width: auto;
         filter: brightness(1.2) saturate(1.1);
         opacity: 0.95;
         transition: all 0.3s;
+        flex-shrink: 0;
+    }
+
+    @media (min-width: 640px) {
+        .deltuh-logo {
+            height: 48px;
+        }
     }
 
     .group:hover .deltuh-logo {
@@ -302,23 +422,40 @@
 
     .brand-text {
         flex: 1;
+        min-width: 0;
     }
 
     .terminal-main-title {
-        font-size: 1.875rem;
+        font-size: 1.25rem;
         font-weight: 800;
         background: linear-gradient(135deg, #ffffff, #e9d5ff);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin: 0 0 0.5rem 0;
+        margin: 0 0 0.25rem 0;
+        line-height: 1.2;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-main-title {
+            font-size: 1.875rem;
+            margin-bottom: 0.5rem;
+        }
     }
 
     .terminal-cursor-line {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.25rem;
         font-family: 'JetBrains Mono', 'Fira Code', monospace;
-        font-size: 0.875rem;
+        font-size: 0.625rem;
+        flex-wrap: wrap;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-cursor-line {
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
     }
 
     .terminal-prompt {
@@ -328,14 +465,23 @@
 
     .terminal-command {
         color: #e9d5ff;
+        word-break: break-all;
     }
 
     .terminal-cursor {
         display: inline-block;
-        width: 8px;
-        height: 16px;
+        width: 6px;
+        height: 12px;
         background: #c4b5fd;
         animation: blink 1s infinite;
+        flex-shrink: 0;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-cursor {
+            width: 8px;
+            height: 16px;
+        }
     }
 
     @keyframes blink {
@@ -346,19 +492,33 @@
     .terminal-description {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
-        padding: 1rem;
+        gap: 0.25rem;
+        padding: 0.75rem;
         background: rgba(59, 7, 100, 0.6);
         border-radius: 8px;
         border: 1px solid rgba(196, 181, 253, 0.2);
     }
 
+    @media (min-width: 640px) {
+        .terminal-description {
+            gap: 0.5rem;
+            padding: 1rem;
+        }
+    }
+
     .terminal-text {
         font-family: 'JetBrains Mono', 'Fira Code', monospace;
         color: #86efac;
-        font-size: 0.875rem;
+        font-size: 0.625rem;
         margin: 0;
-        line-height: 1.5;
+        line-height: 1.4;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-text {
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
     }
 
     .terminal-launch {
@@ -366,21 +526,40 @@
         align-items: center;
         justify-content: space-between;
         margin-top: auto;
-        padding-top: 1rem;
+        padding-top: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+        .terminal-launch {
+            padding-top: 1rem;
+        }
     }
 
     .launch-indicator {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.375rem;
+    }
+
+    @media (min-width: 640px) {
+        .launch-indicator {
+            gap: 0.5rem;
+        }
     }
 
     .status-dot {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
         background: #22c55e;
         border-radius: 50%;
         animation: pulse-dot 2s infinite;
+    }
+
+    @media (min-width: 640px) {
+        .status-dot {
+            width: 8px;
+            height: 8px;
+        }
     }
 
     @keyframes pulse-dot {
@@ -391,15 +570,27 @@
     .launch-text {
         font-family: 'JetBrains Mono', 'Fira Code', monospace;
         color: #22c55e;
-        font-size: 0.875rem;
+        font-size: 0.75rem;
         font-weight: 600;
     }
 
+    @media (min-width: 640px) {
+        .launch-text {
+            font-size: 0.875rem;
+        }
+    }
+
     .launch-arrow {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
         color: #c4b5fd;
         transition: all 0.3s;
         font-weight: 600;
+    }
+
+    @media (min-width: 640px) {
+        .launch-arrow {
+            font-size: 1.5rem;
+        }
     }
 
     .group:hover .launch-arrow {
@@ -407,41 +598,312 @@
         transform: translateX(4px);
     }
 
-    /* Mobile responsive adjustments */
-    @media (max-width: 640px) {
-        .terminal-card-content {
-            padding: 1rem;
-        }
+    /* Sidebar Cards - Compact on Mobile */
+    .sidebar-cards {
+        display: flex;
+        gap: 0.75rem;
+    }
 
-        .terminal-brand {
+    @media (min-width: 640px) {
+        .sidebar-cards {
             flex-direction: column;
-            align-items: flex-start;
-            gap: 0.75rem;
-            text-align: left;
-        }
-
-        .deltuh-logo {
-            height: 40px;
-        }
-
-        .terminal-main-title {
-            font-size: 1.5rem;
-        }
-
-        .terminal-cursor-line {
-            font-size: 0.75rem;
-        }
-
-        .terminal-text {
-            font-size: 0.75rem;
+            gap: 2rem;
         }
     }
 
-    @media (max-width: 1024px) {
-        .terminal-brand {
-            flex-direction: column;
-            align-items: flex-start;
-            text-align: left;
+    .sidebar-card {
+        background: #1f2937;
+        padding: 0.75rem;
+        border-radius: 1rem;
+        border: 1px solid #374151;
+        transition: all 0.3s;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        text-align: left;
+    }
+
+    @media (min-width: 640px) {
+        .sidebar-card {
+            padding: 2rem;
+        }
+    }
+
+    .sidebar-card:hover {
+        border-color: #4b5563;
+        transform: translateY(-2px);
+    }
+
+    .card-content {
+        flex-grow: 1;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    @media (min-width: 640px) {
+        .card-header {
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+    }
+
+    .card-icon {
+        width: 32px;
+        height: 32px;
+        background: #374151;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    @media (min-width: 640px) {
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 0.75rem;
+        }
+    }
+
+    .icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    @media (min-width: 640px) {
+        .icon {
+            width: 24px;
+            height: 24px;
+        }
+    }
+
+    .subscription-icon {
+        color: #22c55e;
+    }
+
+    .profile-icon {
+        color: #8b5cf6;
+    }
+
+    .card-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: white;
+        margin: 0;
+    }
+
+    @media (min-width: 640px) {
+        .card-title {
+            font-size: 1.5rem;
+        }
+    }
+
+    .card-description {
+        color: #9ca3af;
+        font-size: 0.75rem;
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    @media (min-width: 640px) {
+        .card-description {
+            font-size: 1rem;
+        }
+    }
+
+    .plan-status {
+        font-weight: 600;
+        color: #22c55e;
+    }
+
+    .card-arrow {
+        font-weight: 600;
+        color: #8b5cf6;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        align-self: flex-start;
+        transition: color 0.3s;
+    }
+
+    @media (min-width: 640px) {
+        .card-arrow {
+            margin-top: 1.5rem;
+            font-size: 1rem;
+        }
+    }
+
+    .group:hover .card-arrow {
+        color: #a78bfa;
+    }
+
+    /* Saved Calculations - Compact */
+    .saved-calculations {
+        background: #1f2937;
+        padding: 0.75rem;
+        border-radius: 1rem;
+        border: 1px solid #374151;
+    }
+
+    @media (min-width: 640px) {
+        .saved-calculations {
+            padding: 2rem;
+        }
+    }
+
+    .saved-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+        .saved-header {
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+    }
+
+    .saved-icon {
+        width: 32px;
+        height: 32px;
+        background: #374151;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    @media (min-width: 640px) {
+        .saved-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 0.75rem;
+        }
+    }
+
+    .saved-icon .icon {
+        color: #8b5cf6;
+    }
+
+    .saved-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: white;
+        margin: 0;
+    }
+
+    @media (min-width: 640px) {
+        .saved-title {
+            font-size: 1.875rem;
+        }
+    }
+
+    .saved-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    @media (min-width: 768px) {
+        .saved-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .saved-item {
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, #111827, #1f2937);
+        padding: 0.75rem;
+        border-radius: 0.75rem;
+        border: 1px solid #374151;
+        transition: all 0.3s;
+        transform: translateY(0);
+    }
+
+    @media (min-width: 640px) {
+        .saved-item {
+            padding: 1rem;
+        }
+    }
+
+    .saved-item:hover {
+        transform: scale(1.02);
+        border-color: #8b5cf6;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);
+    }
+
+    .saved-content {
+        flex-grow: 1;
+    }
+
+    .saved-name {
+        font-weight: 700;
+        color: white;
+        margin: 0 0 0.125rem 0;
+        font-size: 0.875rem;
+        transition: color 0.3s;
+    }
+
+    @media (min-width: 640px) {
+        .saved-name {
+            font-size: 1rem;
+        }
+    }
+
+    .group:hover .saved-name {
+        color: #a78bfa;
+    }
+
+    .saved-date {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin: 0;
+    }
+
+    @media (min-width: 640px) {
+        .saved-date {
+            font-size: 0.875rem;
+        }
+    }
+
+    .saved-arrow {
+        color: #8b5cf6;
+        transition: color 0.3s;
+        font-weight: 600;
+    }
+
+    .group:hover .saved-arrow {
+        color: white;
+    }
+
+    .no-more-text {
+        text-align: center;
+        padding: 1rem;
+        grid-column: 1 / -1;
+    }
+
+    .no-more-text p {
+        color: #6b7280;
+        margin: 0;
+        font-size: 0.875rem;
+    }
+
+    @media (min-width: 640px) {
+        .no-more-text {
+            padding: 1.5rem;
+        }
+        
+        .no-more-text p {
+            font-size: 1rem;
         }
     }
 </style>

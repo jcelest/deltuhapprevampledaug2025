@@ -42,52 +42,33 @@
   let autoCalculateOnInput = true;
   let showAdvanced = false;
 
-  // Function to populate fields from loaded data
-  function populateFields(data) {
-    if (!data || Object.keys(data).length === 0) return;
-    
-    console.log('Loading input data:', data);
-    if (data.ticker) {
-      ticker = data.ticker;
-      console.log('Set ticker to:', ticker);
-    }
-    if (data.strikePrice) {
-      strikePrice = data.strikePrice;
-      console.log('Set strikePrice to:', strikePrice);
-    }
-    if (data.expiration) {
-      expiration = data.expiration;
-      console.log('Set expiration to:', expiration);
-    }
-    if (data.optionType) {
-      optionType = data.optionType;
-      console.log('Set optionType to:', optionType);
-    }
-    if (data.stockPrice) {
-      stockPrice = data.stockPrice;
-      console.log('Set stockPrice to:', stockPrice);
-    }
-    if (data.impliedVolatility) {
-      impliedVolatility = data.impliedVolatility;
-      console.log('Set impliedVolatility to:', impliedVolatility);
-    }
-    if (data.priceIncrement) {
-      priceIncrement = data.priceIncrement;
-      console.log('Set priceIncrement to:', priceIncrement);
-    }
-  }
-
   // Populate fields when loadedInputData changes
-  $: if (loadedInputData) {
-    populateFields(loadedInputData);
+  $: if (loadedInputData && Object.keys(loadedInputData).length > 0) {
+    console.log('🔄 Loading input data into CalculationEngine:', loadedInputData);
+    // Force update all fields
+    ticker = loadedInputData.ticker || '';
+    strikePrice = loadedInputData.strikePrice || '';
+    expiration = loadedInputData.expiration || getTodayDateString();
+    optionType = loadedInputData.optionType || 'call';
+    stockPrice = loadedInputData.stockPrice || '';
+    impliedVolatility = loadedInputData.impliedVolatility || '';
+    priceIncrement = loadedInputData.priceIncrement || '1.0';
+    console.log('✅ Fields updated - ticker:', ticker, 'strike:', strikePrice, 'expiration:', expiration);
   }
 
-  // Also populate on mount in case data is already available
-  onMount(() => {
-    if (loadedInputData) {
-      populateFields(loadedInputData);
-    }
-  });
+  // Also handle the case where data is passed after component is mounted
+  $: if (loadedInputData) {
+    // Use a small delay to ensure the component is ready
+    setTimeout(() => {
+      if (loadedInputData.ticker) ticker = loadedInputData.ticker;
+      if (loadedInputData.strikePrice) strikePrice = loadedInputData.strikePrice;
+      if (loadedInputData.expiration) expiration = loadedInputData.expiration;
+      if (loadedInputData.optionType) optionType = loadedInputData.optionType;
+      if (loadedInputData.stockPrice) stockPrice = loadedInputData.stockPrice;
+      if (loadedInputData.impliedVolatility) impliedVolatility = loadedInputData.impliedVolatility;
+      if (loadedInputData.priceIncrement) priceIncrement = loadedInputData.priceIncrement;
+    }, 100);
+  }
 
   // Expose current input values for external access
   export function getCurrentInputs() {

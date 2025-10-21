@@ -6,6 +6,7 @@
   export const config = {};
   export let hasPricingMatrix = false;
   export let loadedInputData = null;
+  export let calculationResults = null;
 
   // This function formats a date object to 'YYYY-MM-DD' for the input field.
   function getTodayDateString() {
@@ -33,7 +34,6 @@
   // App state to manage UI feedback
   let isLoading = false;
   let error = '';
-  let calculationResults = null;
   
   // State for the informational message
   let infoMessage = '';
@@ -79,6 +79,16 @@
   // Reset the loaded data flag when component is destroyed/recreated
   $: if (!loadedInputData) {
     hasLoadedData = false;
+  }
+
+  // Handle when calculationResults is passed as a prop (from saved terminal)
+  $: if (calculationResults && calculationResults.calculationTime) {
+    const asOfTime = new Date(calculationResults.calculationTime);
+    if (calculationResults.isMarketOpen) {
+      infoMessage = `Real-time • ${asOfTime.toLocaleTimeString()}`;
+    } else {
+      infoMessage = `Closed • Last: ${asOfTime.toLocaleTimeString()}`;
+    }
   }
 
   // Expose current input values for external access

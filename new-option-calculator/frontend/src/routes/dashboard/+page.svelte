@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { authToken, user } from '../../stores/authStore.js';
+  import { showSuccess, showError, showWarning } from '../../lib/stores/notificationStore.js';
+  import { showConfirmationDialog } from '../../lib/stores/confirmationStore.js';
   import axios from 'axios';
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://deltuhapprevampledaug2025.onrender.com';
@@ -55,7 +57,15 @@
     event.preventDefault();
     event.stopPropagation();
     
-    if (!confirm('Are you sure you want to delete this terminal? This action cannot be undone.')) {
+    // Show branded confirmation dialog
+    const confirmed = await showConfirmationDialog(
+      'Delete Terminal',
+      'Are you sure you want to delete this terminal? This action cannot be undone.',
+      'Delete',
+      'Cancel'
+    );
+    
+    if (!confirmed) {
       return;
     }
     
@@ -71,9 +81,19 @@
       
       // Remove from list
       savedTerminals = savedTerminals.filter(t => t._id !== terminalId);
+      
+      // Show success notification
+      showSuccess(
+        'Terminal Deleted',
+        'The terminal has been permanently removed from your account.'
+      );
+      
     } catch (error) {
       console.error('Error deleting terminal:', error);
-      alert('Failed to delete terminal. Please try again.');
+      showError(
+        'Delete Failed',
+        'Unable to delete the terminal. Please try again.'
+      );
     } finally {
       deletingTerminalId = null;
     }

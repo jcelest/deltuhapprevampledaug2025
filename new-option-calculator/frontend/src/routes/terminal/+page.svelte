@@ -14,6 +14,7 @@
   import IVRank from '../../lib/components/IVRank.svelte';
   import ComponentSelector from '../../lib/components/ComponentSelector.svelte';
   import SaveTerminalModal from '../../lib/components/SaveTerminalModal.svelte';
+  import { showSuccess, showError } from '../../lib/stores/notificationStore.js';
   
   // Component registry
   const components = {
@@ -635,7 +636,10 @@
       setTimeout(autoExpandComponents, 200);
     } catch (error) {
       console.error('Error loading terminal:', error);
-      alert('Failed to load terminal. It may have been deleted or you may not have access to it.');
+      showError(
+        'Load Failed',
+        'Unable to load the terminal. It may have been deleted or you may not have access to it.'
+      );
       goto('/dashboard');
     }
   }
@@ -693,12 +697,20 @@
       showSaveModal = false;
       isSavingTerminal = false;
       
-      // Show success message (you could add a toast notification here)
-      alert('Terminal saved successfully!');
+      // Show branded success notification
+      showSuccess(
+        'Terminal Saved',
+        `"${name}" has been saved successfully. You can access it from your dashboard.`
+      );
     } catch (error) {
       console.error('Error saving terminal:', error);
       isSavingTerminal = false;
-      alert('Failed to save terminal. Please try again.');
+      
+      // Show branded error notification
+      showError(
+        'Save Failed',
+        'Unable to save your terminal. Please check your connection and try again.'
+      );
     }
   }
 

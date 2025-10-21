@@ -7,6 +7,8 @@
 
   import { authToken } from '../stores/authStore.js';
   import { goto } from '$app/navigation';
+  import NotificationContainer from '../lib/components/NotificationContainer.svelte';
+  import ConfirmationDialogContainer from '../lib/components/ConfirmationDialogContainer.svelte';
 
   // This function will be called when the user clicks "Logout"
   function handleLogout() {
@@ -88,6 +90,10 @@
       </div>
     </div>
   </footer>
+  
+  <!-- Global Notification System -->
+  <NotificationContainer />
+  <ConfirmationDialogContainer />
 </div>
 
 <style global>

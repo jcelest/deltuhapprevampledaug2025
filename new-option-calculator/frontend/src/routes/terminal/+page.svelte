@@ -714,6 +714,53 @@
     }
   }
 
+  // Generate default terminal name based on current inputs
+  function generateDefaultTerminalName() {
+    try {
+      const ticker = inputData.ticker || '';
+      const strikePrice = inputData.strikePrice || '';
+      const expirationDate = inputData.expirationDate || '';
+      
+      // Format expiration date as MM/DD/YY
+      let formattedDate = '';
+      if (expirationDate) {
+        const date = new Date(expirationDate);
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const year = String(date.getFullYear()).slice(-2);
+        formattedDate = `${month}/${day}/${year}`;
+      }
+      
+      // Build the name: (TICKER) (STRIKE PRICE) OPTIONS - (EXPIRATION DATE MM/DD/YY) EXPIRATION
+      const parts = [];
+      
+      if (ticker) {
+        parts.push(ticker.toUpperCase());
+      }
+      
+      if (strikePrice) {
+        parts.push(`$${strikePrice}`);
+      }
+      
+      if (parts.length > 0) {
+        parts.push('OPTIONS');
+      }
+      
+      if (formattedDate) {
+        const datePart = `${formattedDate} EXPIRATION`;
+        if (parts.length > 0) {
+          return `${parts.join(' ')} - ${datePart}`;
+        }
+        return datePart;
+      }
+      
+      return parts.length > 0 ? parts.join(' ') : '';
+    } catch (error) {
+      console.error('Error generating default name:', error);
+      return '';
+    }
+  }
+
   function openSaveModal() {
     const token = $authToken;
     if (!token) {
@@ -1018,6 +1065,7 @@
 <SaveTerminalModal
   show={showSaveModal}
   isSaving={isSavingTerminal}
+  defaultName={generateDefaultTerminalName()}
   on:save={handleSaveTerminal}
   on:close={() => showSaveModal = false}
 />

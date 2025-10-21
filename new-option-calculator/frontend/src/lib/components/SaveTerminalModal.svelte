@@ -5,10 +5,16 @@
   
   export let show = false;
   export let isSaving = false;
+  export let defaultName = '';
   
   let terminalName = '';
   let terminalDescription = '';
   let errorMessage = '';
+  
+  // Update terminal name when defaultName changes and modal is shown
+  $: if (show && defaultName && !terminalName) {
+    terminalName = defaultName;
+  }
   
   function handleSave() {
     errorMessage = '';
@@ -26,11 +32,18 @@
   
   function handleClose() {
     if (!isSaving) {
-      terminalName = '';
+      // Don't clear terminalName here - it will be reset when modal reopens
       terminalDescription = '';
       errorMessage = '';
       dispatch('close');
     }
+  }
+  
+  // Reset the modal when it closes
+  $: if (!show) {
+    terminalName = '';
+    terminalDescription = '';
+    errorMessage = '';
   }
   
   function handleKeydown(e) {

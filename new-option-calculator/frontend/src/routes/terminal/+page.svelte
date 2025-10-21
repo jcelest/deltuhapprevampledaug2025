@@ -45,6 +45,7 @@
   let calculationResults = null;
   let inputData = {};
   let currentTerminalId = null;
+  let calculationEngineRef = null;
   
   const API_URL = import.meta.env.VITE_API_URL || 'https://deltuhapprevampledaug2025.onrender.com';
 
@@ -717,9 +718,22 @@
   // Generate default terminal name based on current inputs
   function generateDefaultTerminalName() {
     try {
-      const ticker = inputData.ticker || '';
-      const strikePrice = inputData.strikePrice || '';
-      const expirationDate = inputData.expiration || '';
+      // Get current values directly from CalculationEngine component
+      let ticker = '';
+      let strikePrice = '';
+      let expirationDate = '';
+      
+      if (calculationEngineRef && calculationEngineRef.getCurrentInputs) {
+        const currentInputs = calculationEngineRef.getCurrentInputs();
+        ticker = currentInputs.ticker || '';
+        strikePrice = currentInputs.strikePrice || '';
+        expirationDate = currentInputs.expiration || '';
+      } else {
+        // Fallback to inputData if component ref not available
+        ticker = inputData.ticker || '';
+        strikePrice = inputData.strikePrice || '';
+        expirationDate = inputData.expiration || '';
+      }
       
       // Format expiration date as MM/DD/YY
       let formattedDate = '';
@@ -1013,9 +1027,10 @@
           {#if components[item.component]}
             <svelte:component 
               this={components[item.component]} 
+              bind:this={item.component === 'CalculationEngine' ? calculationEngineRef : undefined}
               config={item.config}
               {calculationResults}
-              {inputData}
+              loadedInputData={inputData}
               {isMobile}
               hasPricingMatrix={hasPricingMatrix()}
               on:configChange={(e) => handleConfigChange(item.id, e.detail.config)}

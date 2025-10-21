@@ -5,6 +5,7 @@
   const dispatch = createEventDispatcher();
   export const config = {};
   export let hasPricingMatrix = false;
+  export let loadedInputData = null;
 
   // This function formats a date object to 'YYYY-MM-DD' for the input field.
   function getTodayDateString() {
@@ -40,6 +41,30 @@
   // Advanced UI toggle
   let autoCalculateOnInput = true;
   let showAdvanced = false;
+
+  // Populate fields when loadedInputData changes
+  $: if (loadedInputData) {
+    if (loadedInputData.ticker) ticker = loadedInputData.ticker;
+    if (loadedInputData.strikePrice) strikePrice = loadedInputData.strikePrice;
+    if (loadedInputData.expiration) expiration = loadedInputData.expiration;
+    if (loadedInputData.optionType) optionType = loadedInputData.optionType;
+    if (loadedInputData.stockPrice) stockPrice = loadedInputData.stockPrice;
+    if (loadedInputData.impliedVolatility) impliedVolatility = loadedInputData.impliedVolatility;
+    if (loadedInputData.priceIncrement) priceIncrement = loadedInputData.priceIncrement;
+  }
+
+  // Expose current input values for external access
+  export function getCurrentInputs() {
+    return {
+      ticker,
+      strikePrice,
+      expiration,
+      optionType,
+      stockPrice,
+      impliedVolatility,
+      priceIncrement
+    };
+  }
 
   // The URL of our backend server
   const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';

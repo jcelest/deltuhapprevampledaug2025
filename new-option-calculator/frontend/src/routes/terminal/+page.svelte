@@ -719,7 +719,7 @@
     try {
       const ticker = inputData.ticker || '';
       const strikePrice = inputData.strikePrice || '';
-      const expirationDate = inputData.expirationDate || '';
+      const expirationDate = inputData.expiration || '';
       
       // Format expiration date as MM/DD/YY
       let formattedDate = '';

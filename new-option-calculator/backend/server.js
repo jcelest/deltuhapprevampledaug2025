@@ -45,8 +45,11 @@ app.use(express.json());
 // 1. Authentication Routes
 app.use('/api/auth', require('./routes/auth'));
 
+// 2. Terminal Routes (saved terminals)
+app.use('/api/terminals', require('./routes/terminals'));
 
-// 2. Market Data Routes (Placeholder)
+
+// 3. Market Data Routes (Placeholder)
 app.post('/api/fetch-market-data', (req, res) => {
   const { ticker } = req.body;
   console.log(`Simulating market data fetch for: ${ticker}`);
@@ -58,7 +61,7 @@ app.post('/api/fetch-market-data', (req, res) => {
 });
 
 
-// 3. Calculator Route
+// 4. Calculator Route
 app.post('/api/calculate', (req, res) => {
   try {
     const { 

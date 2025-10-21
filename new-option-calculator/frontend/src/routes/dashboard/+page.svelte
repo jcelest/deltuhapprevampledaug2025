@@ -2,19 +2,101 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { authToken, user } from '../../stores/authStore.js';
+  import axios from 'axios';
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  
+  let savedTerminals = [];
+  let isLoadingTerminals = true;
+  let deletingTerminalId = null;
 
   // This is a simple check to protect the route.
   // If there's no auth token when the component mounts, redirect to login.
-  onMount(() => {
+  onMount(async () => {
     const token = $authToken;
     if (!token) {
       goto('/login');
+      return;
     }
     // In a real app, you would also use the token to fetch user details
     // and populate the 'user' store here.
     // For now, we'll just simulate it.
     user.set({ email: 'user@example.com' }); 
+    
+    // Fetch saved terminals
+    await fetchSavedTerminals();
   });
+
+  async function fetchSavedTerminals() {
+    try {
+      isLoadingTerminals = true;
+      const token = $authToken;
+      
+      const response = await axios.get(`${API_URL}/api/terminals`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      savedTerminals = response.data;
+    } catch (error) {
+      console.error('Error fetching terminals:', error);
+      savedTerminals = [];
+    } finally {
+      isLoadingTerminals = false;
+    }
+  }
+
+  function loadTerminal(terminalId) {
+    goto(`/terminal?id=${terminalId}`);
+  }
+
+  async function deleteTerminal(terminalId, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (!confirm('Are you sure you want to delete this terminal? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      deletingTerminalId = terminalId;
+      const token = $authToken;
+      
+      await axios.delete(`${API_URL}/api/terminals/${terminalId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Remove from list
+      savedTerminals = savedTerminals.filter(t => t._id !== terminalId);
+    } catch (error) {
+      console.error('Error deleting terminal:', error);
+      alert('Failed to delete terminal. Please try again.');
+    } finally {
+      deletingTerminalId = null;
+    }
+  }
+
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  }
+
+  function getTerminalPreview(terminal) {
+    if (terminal.ticker && terminal.optionType) {
+      return `${terminal.ticker} - ${terminal.optionType.toUpperCase()}`;
+    }
+    if (terminal.ticker) {
+      return terminal.ticker;
+    }
+    return `${terminal.layout?.length || 0} component${terminal.layout?.length !== 1 ? 's' : ''}`;
+  }
 </script>
 
 {#if $user}
@@ -123,7 +205,7 @@
     </div>
   </div>
 
-  <!-- Saved Calculations Section - Compact -->
+  <!-- Saved Terminals Section - Compact -->
   <div class="saved-calculations">
     <div class="saved-header">
         <div class="saved-icon">
@@ -132,37 +214,69 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
             </svg>
         </div>
-        <h3 class="saved-title">Saved Calculations</h3>
+        <h3 class="saved-title">Saved Terminals</h3>
     </div>
     
-    <!-- Compact saved calculations grid -->
-    <div class="saved-grid">
-        <!-- Example of a saved item -->
-        <a href="#" class="saved-item group">
+    <!-- Loading State -->
+    {#if isLoadingTerminals}
+      <div class="loading-state">
+        <svg class="loading-spinner" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="loading-text">Loading your terminals...</p>
+      </div>
+    {:else if savedTerminals.length > 0}
+      <!-- Saved terminals grid -->
+      <div class="saved-grid">
+        {#each savedTerminals as terminal (terminal._id)}
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div 
+            class="saved-item group"
+            on:click={() => loadTerminal(terminal._id)}
+          >
             <div class="saved-content">
-                <p class="saved-name">AAPL - Iron Condor</p>
-                <p class="saved-date">2023-10-27</p>
+              <p class="saved-name">{terminal.name}</p>
+              <p class="saved-preview">{getTerminalPreview(terminal)}</p>
+              <p class="saved-date">{formatDate(terminal.updatedAt)}</p>
             </div>
-            <span class="saved-arrow">&rarr;</span>
-        </a>
-        <a href="#" class="saved-item group">
-            <div class="saved-content">
-                <p class="saved-name">TSLA - Long Call</p>
-                <p class="saved-date">2023-10-26</p>
+            <div class="saved-actions">
+              <button
+                class="delete-button"
+                on:click={(e) => deleteTerminal(terminal._id, e)}
+                disabled={deletingTerminalId === terminal._id}
+                title="Delete terminal"
+              >
+                {#if deletingTerminalId === terminal._id}
+                  <svg class="delete-spinner" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                {:else}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                {/if}
+              </button>
+              <span class="saved-arrow">&rarr;</span>
             </div>
-            <span class="saved-arrow">&rarr;</span>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <!-- Empty State -->
+      <div class="empty-terminals">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+        </svg>
+        <p class="empty-text">No saved terminals yet</p>
+        <p class="empty-subtext">Create your first terminal and save it for later</p>
+        <a href="/terminal" class="empty-button">
+          Go to Terminal
         </a>
-        <a href="#" class="saved-item group">
-            <div class="saved-content">
-                <p class="saved-name">NVDA - Vertical Spread</p>
-                <p class="saved-date">2023-10-25</p>
-            </div>
-            <span class="saved-arrow">&rarr;</span>
-        </a>
-        <div class="no-more-text">
-            <p>No more saved calculations.</p>
-        </div>
-    </div>
+      </div>
+    {/if}
   </div>
 </div>
 {/if}
@@ -821,12 +935,14 @@
     .saved-item {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         background: linear-gradient(135deg, #111827, #1f2937);
         padding: 0.75rem;
         border-radius: 0.75rem;
         border: 1px solid #374151;
         transition: all 0.3s;
         transform: translateY(0);
+        cursor: pointer;
     }
 
     @media (min-width: 640px) {
@@ -843,12 +959,13 @@
 
     .saved-content {
         flex-grow: 1;
+        min-width: 0;
     }
 
     .saved-name {
         font-weight: 700;
         color: white;
-        margin: 0 0 0.125rem 0;
+        margin: 0 0 0.25rem 0;
         font-size: 0.875rem;
         transition: color 0.3s;
     }
@@ -863,6 +980,13 @@
         color: #a78bfa;
     }
 
+    .saved-preview {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin: 0 0 0.25rem 0;
+        font-family: 'Courier New', monospace;
+    }
+
     .saved-date {
         font-size: 0.75rem;
         color: #9ca3af;
@@ -875,35 +999,133 @@
         }
     }
 
+    .saved-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    .delete-button {
+        padding: 0.5rem;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 0.5rem;
+        color: #f87171;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+    }
+
+    .delete-button:hover:not(:disabled) {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.4);
+        color: #fca5a5;
+        transform: scale(1.05);
+    }
+
+    .delete-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .delete-button svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .delete-spinner {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
     .saved-arrow {
         color: #8b5cf6;
         transition: color 0.3s;
         font-weight: 600;
+        font-size: 1.25rem;
     }
 
     .group:hover .saved-arrow {
         color: white;
     }
 
-    .no-more-text {
-        text-align: center;
-        padding: 1rem;
-        grid-column: 1 / -1;
+    /* Loading State */
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        gap: 1rem;
     }
 
-    .no-more-text p {
+    .loading-spinner {
+        width: 48px;
+        height: 48px;
+        color: #8b5cf6;
+        animation: spin 1s linear infinite;
+    }
+
+    .loading-text {
+        font-size: 1rem;
+        color: #9ca3af;
+        margin: 0;
+    }
+
+    /* Empty State */
+    .empty-terminals {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        text-align: center;
+        gap: 0.75rem;
+    }
+
+    .empty-terminals .empty-icon {
+        width: 64px;
+        height: 64px;
+        color: #6b7280;
+        stroke-width: 1.5;
+    }
+
+    .empty-terminals .empty-text {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #9ca3af;
+        margin: 0;
+    }
+
+    .empty-terminals .empty-subtext {
+        font-size: 0.875rem;
         color: #6b7280;
         margin: 0;
-        font-size: 0.875rem;
     }
 
-    @media (min-width: 640px) {
-        .no-more-text {
-            padding: 1.5rem;
-        }
-        
-        .no-more-text p {
-            font-size: 1rem;
-        }
+    .empty-terminals .empty-button {
+        margin-top: 1rem;
+        padding: 0.625rem 1.5rem;
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        color: white;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+
+    .empty-terminals .empty-button:hover {
+        background: linear-gradient(135deg, #7c3aed, #6d28d9);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
     }
 </style>

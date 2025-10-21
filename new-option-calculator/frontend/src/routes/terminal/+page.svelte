@@ -1,6 +1,10 @@
 <script>
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { authToken } from '../../stores/authStore.js';
+  import axios from 'axios';
   
   // Import components
   import CalculationEngine from '../../lib/components/CalculationEngine.svelte';
@@ -9,6 +13,7 @@
   import MarketData from '../../lib/components/MarketData.svelte';
   import IVRank from '../../lib/components/IVRank.svelte';
   import ComponentSelector from '../../lib/components/ComponentSelector.svelte';
+  import SaveTerminalModal from '../../lib/components/SaveTerminalModal.svelte';
   
   // Component registry
   const components = {
@@ -34,8 +39,13 @@
 
   let isEditMode = writable(false);
   let showComponentSelector = false;
+  let showSaveModal = false;
+  let isSavingTerminal = false;
   let calculationResults = null;
   let inputData = {};
+  let currentTerminalId = null;
+  
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
   // Drag and resize state
   let activeAction = null;
@@ -59,8 +69,17 @@
   let initialPinchDistance = 0;
   let isMultiTouch = false;
 
-  onMount(() => {
-    loadLayout();
+  onMount(async () => {
+    // Check if loading a saved terminal
+    const urlParams = new URLSearchParams(window.location.search);
+    const terminalId = urlParams.get('id');
+    
+    if (terminalId) {
+      await loadSavedTerminal(terminalId);
+    } else {
+      loadLayout();
+    }
+    
     updateDeviceInfo();
     
     // Add event listeners
@@ -582,6 +601,115 @@
   function hasPricingMatrix() {
     return $layout.some(item => item.component === 'PricingMatrix');
   }
+
+  // Save and load terminal functions
+  async function loadSavedTerminal(terminalId) {
+    try {
+      const token = $authToken;
+      if (!token) {
+        goto('/login');
+        return;
+      }
+
+      const response = await axios.get(`${API_URL}/api/terminals/${terminalId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const terminal = response.data;
+      
+      // Load the terminal state
+      if (terminal.layout && terminal.layout.length > 0) {
+        layout.set(terminal.layout);
+      }
+      if (terminal.calculationResults) {
+        calculationResults = terminal.calculationResults;
+      }
+      if (terminal.inputData) {
+        inputData = terminal.inputData;
+      }
+      
+      currentTerminalId = terminalId;
+      
+      setTimeout(autoExpandComponents, 200);
+    } catch (error) {
+      console.error('Error loading terminal:', error);
+      alert('Failed to load terminal. It may have been deleted or you may not have access to it.');
+      goto('/dashboard');
+    }
+  }
+
+  async function handleSaveTerminal(event) {
+    const { name, description } = event.detail;
+    
+    try {
+      isSavingTerminal = true;
+      const token = $authToken;
+      
+      if (!token) {
+        goto('/login');
+        return;
+      }
+
+      const terminalData = {
+        name,
+        description,
+        layout: $layout,
+        calculationResults,
+        inputData,
+        ticker: inputData.ticker || '',
+        optionType: inputData.optionType || ''
+      };
+
+      if (currentTerminalId) {
+        // Update existing terminal
+        await axios.put(
+          `${API_URL}/api/terminals/${currentTerminalId}`,
+          terminalData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      } else {
+        // Create new terminal
+        const response = await axios.post(
+          `${API_URL}/api/terminals`,
+          terminalData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        
+        currentTerminalId = response.data.terminal._id;
+      }
+
+      showSaveModal = false;
+      isSavingTerminal = false;
+      
+      // Show success message (you could add a toast notification here)
+      alert('Terminal saved successfully!');
+    } catch (error) {
+      console.error('Error saving terminal:', error);
+      isSavingTerminal = false;
+      alert('Failed to save terminal. Please try again.');
+    }
+  }
+
+  function openSaveModal() {
+    const token = $authToken;
+    if (!token) {
+      goto('/login');
+      return;
+    }
+    showSaveModal = true;
+  }
 </script>
 
 <svelte:head>
@@ -610,6 +738,16 @@
         </div>
       </div>
       <div class="desktop-controls">
+        <button 
+          on:click={openSaveModal}
+          class="control-button save-button"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+          </svg>
+          Save Terminal
+        </button>
+        
         <button 
           on:click={() => showComponentSelector = true}
           class="control-button primary-button"
@@ -646,6 +784,16 @@
     
     <!-- Mobile Controls -->
     <div class="mobile-controls">
+      <button 
+        on:click={openSaveModal}
+        class="mobile-button save-mobile"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+        </svg>
+        Save
+      </button>
+      
       <button 
         on:click={() => showComponentSelector = true}
         class="mobile-button primary-mobile"
@@ -855,6 +1003,13 @@
   />
 {/if}
 
+<SaveTerminalModal
+  show={showSaveModal}
+  isSaving={isSavingTerminal}
+  on:save={handleSaveTerminal}
+  on:close={() => showSaveModal = false}
+/>
+
 <style>
   .terminal-container {
     max-width: 1792px;
@@ -1053,6 +1208,18 @@
     box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.3);
   }
 
+  .save-button {
+    background: linear-gradient(135deg, #a855f7, #9333ea);
+    color: white;
+    border: 1px solid transparent;
+  }
+
+  .save-button:hover {
+    background: linear-gradient(135deg, #9333ea, #7e22ce);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+  }
+
   .mobile-controls {
     display: flex;
     justify-content: center;
@@ -1120,6 +1287,15 @@
 
   .tertiary-mobile:hover {
     background: linear-gradient(135deg, #dc2626, #b91c1c);
+  }
+
+  .save-mobile {
+    background: linear-gradient(135deg, #a855f7, #9333ea);
+    color: white;
+  }
+
+  .save-mobile:hover {
+    background: linear-gradient(135deg, #9333ea, #7e22ce);
   }
 
   .edit-mode-banner {

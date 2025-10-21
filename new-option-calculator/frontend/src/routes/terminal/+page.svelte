@@ -45,7 +45,7 @@
   let inputData = {};
   let currentTerminalId = null;
   
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://deltuhapprevampledaug2025.onrender.com';
 
   // Drag and resize state
   let activeAction = null;

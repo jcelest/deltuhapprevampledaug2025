@@ -42,32 +42,46 @@
   let autoCalculateOnInput = true;
   let showAdvanced = false;
 
+  // Track if we've already loaded data to prevent overwriting user input
+  let hasLoadedData = false;
+
+  // Function to populate fields from loaded data
+  function populateFromLoadedData(data) {
+    if (!data || Object.keys(data).length === 0) return;
+    
+    console.log('🔄 Loading input data into CalculationEngine:', data);
+    
+    // Only populate if we haven't loaded data yet (to avoid overwriting user input)
+    if (!hasLoadedData) {
+      ticker = data.ticker || '';
+      strikePrice = data.strikePrice || '';
+      expiration = data.expiration || getTodayDateString();
+      optionType = data.optionType || 'call';
+      stockPrice = data.stockPrice || '';
+      impliedVolatility = data.impliedVolatility || '';
+      priceIncrement = data.priceIncrement || '1.0';
+      
+      hasLoadedData = true;
+      console.log('✅ Fields updated - ticker:', ticker, 'strike:', strikePrice, 'expiration:', expiration);
+    }
+  }
+
   // Populate fields when loadedInputData changes
   $: if (loadedInputData && Object.keys(loadedInputData).length > 0) {
-    console.log('🔄 Loading input data into CalculationEngine:', loadedInputData);
-    // Force update all fields
-    ticker = loadedInputData.ticker || '';
-    strikePrice = loadedInputData.strikePrice || '';
-    expiration = loadedInputData.expiration || getTodayDateString();
-    optionType = loadedInputData.optionType || 'call';
-    stockPrice = loadedInputData.stockPrice || '';
-    impliedVolatility = loadedInputData.impliedVolatility || '';
-    priceIncrement = loadedInputData.priceIncrement || '1.0';
-    console.log('✅ Fields updated - ticker:', ticker, 'strike:', strikePrice, 'expiration:', expiration);
+    populateFromLoadedData(loadedInputData);
   }
 
   // Also handle the case where data is passed after component is mounted
   $: if (loadedInputData) {
     // Use a small delay to ensure the component is ready
     setTimeout(() => {
-      if (loadedInputData.ticker) ticker = loadedInputData.ticker;
-      if (loadedInputData.strikePrice) strikePrice = loadedInputData.strikePrice;
-      if (loadedInputData.expiration) expiration = loadedInputData.expiration;
-      if (loadedInputData.optionType) optionType = loadedInputData.optionType;
-      if (loadedInputData.stockPrice) stockPrice = loadedInputData.stockPrice;
-      if (loadedInputData.impliedVolatility) impliedVolatility = loadedInputData.impliedVolatility;
-      if (loadedInputData.priceIncrement) priceIncrement = loadedInputData.priceIncrement;
+      populateFromLoadedData(loadedInputData);
     }, 100);
+  }
+
+  // Reset the loaded data flag when component is destroyed/recreated
+  $: if (!loadedInputData) {
+    hasLoadedData = false;
   }
 
   // Expose current input values for external access

@@ -45,6 +45,7 @@
   let calculationResults = null;
   let inputData = {};
   let currentTerminalId = null;
+  let componentKey = 0; // Key to force re-render of components
   
   const API_URL = import.meta.env.VITE_API_URL || 'https://deltuhapprevampledaug2025.onrender.com';
 
@@ -630,6 +631,8 @@
       if (terminal.inputData) {
         inputData = terminal.inputData;
         console.log('📥 Loaded terminal inputData:', inputData);
+        // Force re-render of components to ensure they pick up the new data
+        componentKey += 1;
       }
       
       currentTerminalId = terminalId;
@@ -1014,6 +1017,7 @@
         <div class="component-content">
           {#if components[item.component]}
             <svelte:component 
+              key={componentKey}
               this={components[item.component]} 
               config={item.config}
               {calculationResults}

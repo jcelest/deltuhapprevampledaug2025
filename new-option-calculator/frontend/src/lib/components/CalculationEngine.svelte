@@ -68,7 +68,10 @@
 
   // Populate fields when loadedInputData changes
   $: if (loadedInputData && Object.keys(loadedInputData).length > 0) {
+    console.log('🎯 CalculationEngine received loadedInputData:', loadedInputData);
     populateFromLoadedData(loadedInputData);
+  } else if (loadedInputData) {
+    console.log('⚠️ CalculationEngine received empty loadedInputData:', loadedInputData);
   }
 
   // Also handle the case where data is passed after component is mounted

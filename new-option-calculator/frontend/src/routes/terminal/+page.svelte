@@ -49,6 +49,11 @@
   
   const API_URL = import.meta.env.VITE_API_URL || 'https://deltuhapprevampledaug2025.onrender.com';
 
+  // Track when inputData changes
+  $: if (inputData && Object.keys(inputData).length > 0) {
+    console.log('🔄 inputData changed in terminal page:', inputData);
+  }
+
   // Drag and resize state
   let activeAction = null;
   let activeComponent = null;
@@ -631,8 +636,15 @@
       if (terminal.inputData) {
         inputData = terminal.inputData;
         console.log('📥 Loaded terminal inputData:', inputData);
+        console.log('🔍 InputData keys:', Object.keys(inputData));
+        console.log('🔍 Ticker value:', inputData.ticker);
+        console.log('🔍 Strike value:', inputData.strikePrice);
+        console.log('🔍 Expiration value:', inputData.expiration);
         // Force re-render of components to ensure they pick up the new data
         componentKey += 1;
+        console.log('🔄 Component key updated to:', componentKey);
+      } else {
+        console.log('❌ No inputData found in terminal');
       }
       
       currentTerminalId = terminalId;

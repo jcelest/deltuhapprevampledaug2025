@@ -54,6 +54,11 @@
     console.log('🔄 inputData changed in terminal page:', inputData);
   }
 
+  // Track when calculationResults changes
+  $: if (calculationResults) {
+    console.log('📈 calculationResults changed in terminal page:', calculationResults);
+  }
+
   // Drag and resize state
   let activeAction = null;
   let activeComponent = null;
@@ -1029,10 +1034,11 @@
         <div class="component-content">
           {#if components[item.component]}
             <svelte:component 
-              key={componentKey}
+              key={item.component === 'PricingMatrix' ? `${componentKey}-${calculationResults ? 'with-data' : 'no-data'}` : componentKey}
               this={components[item.component]} 
               config={item.config}
               {calculationResults}
+              {inputData}
               loadedInputData={inputData}
               {isMobile}
               hasPricingMatrix={hasPricingMatrix()}

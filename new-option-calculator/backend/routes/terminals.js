@@ -24,7 +24,7 @@ const authenticateToken = (req, res, next) => {
 // GET all terminals for the authenticated user
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const terminals = await Terminal.find({ userId: req.user.userId })
+    const terminals = await Terminal.find({ userId: req.user.user.id })
       .sort({ updatedAt: -1 }) // Most recently updated first
       .select('-__v'); // Exclude version key
     
@@ -40,7 +40,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const terminal = await Terminal.findOne({
       _id: req.params.id,
-      userId: req.user.userId // Ensure user can only access their own terminals
+      userId: req.user.user.id // Ensure user can only access their own terminals
     });
 
     if (!terminal) {
@@ -69,7 +69,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     const terminal = new Terminal({
-      userId: req.user.userId,
+      userId: req.user.user.id,
       name: name.trim(),
       description: description?.trim() || '',
       layout,
@@ -98,7 +98,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     const terminal = await Terminal.findOne({
       _id: req.params.id,
-      userId: req.user.userId
+      userId: req.user.user.id
     });
 
     if (!terminal) {
@@ -131,7 +131,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const terminal = await Terminal.findOneAndDelete({
       _id: req.params.id,
-      userId: req.user.userId
+      userId: req.user.user.id
     });
 
     if (!terminal) {

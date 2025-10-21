@@ -630,6 +630,7 @@
       }
       if (terminal.inputData) {
         inputData = terminal.inputData;
+        console.log('Loaded terminal inputData:', inputData);
       }
       
       currentTerminalId = terminalId;

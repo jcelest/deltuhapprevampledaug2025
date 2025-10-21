@@ -49,8 +49,6 @@
   function populateFromLoadedData(data) {
     if (!data || Object.keys(data).length === 0) return;
     
-    console.log('🔄 Loading input data into CalculationEngine:', data);
-    
     // Only populate if we haven't loaded data yet (to avoid overwriting user input)
     if (!hasLoadedData) {
       ticker = data.ticker || '';
@@ -62,16 +60,12 @@
       priceIncrement = data.priceIncrement || '1.0';
       
       hasLoadedData = true;
-      console.log('✅ Fields updated - ticker:', ticker, 'strike:', strikePrice, 'expiration:', expiration);
     }
   }
 
   // Populate fields when loadedInputData changes
   $: if (loadedInputData && Object.keys(loadedInputData).length > 0) {
-    console.log('🎯 CalculationEngine received loadedInputData:', loadedInputData);
     populateFromLoadedData(loadedInputData);
-  } else if (loadedInputData) {
-    console.log('⚠️ CalculationEngine received empty loadedInputData:', loadedInputData);
   }
 
   // Also handle the case where data is passed after component is mounted
@@ -172,7 +166,9 @@
           strikePrice: parseFloat(strikePrice),
           stockPrice: parseFloat(finalStockPrice),
           optionType,
-          expiration
+          expiration,
+          impliedVolatility: finalImpliedVolatility,
+          priceIncrement: parseFloat(priceIncrement)
         }
       });
 

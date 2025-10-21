@@ -7,13 +7,6 @@
   export let inputData = {};
   export const config = {};
 
-  // Debug the received data
-  $: if (calculationResults) {
-    console.log('📊 PricingMatrix received calculationResults:', calculationResults);
-  }
-  $: if (inputData && Object.keys(inputData).length > 0) {
-    console.log('📊 PricingMatrix received inputData:', inputData);
-  }
 
   // State for Entry Price Analysis
   let isAnalyzing = false;

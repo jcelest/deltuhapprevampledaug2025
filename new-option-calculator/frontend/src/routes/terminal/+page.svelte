@@ -724,11 +724,12 @@
       // Format expiration date as MM/DD/YY
       let formattedDate = '';
       if (expirationDate) {
-        const date = new Date(expirationDate);
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const year = String(date.getFullYear()).slice(-2);
-        formattedDate = `${month}/${day}/${year}`;
+        // Parse the date string directly to avoid timezone issues
+        const [year, month, day] = expirationDate.split('-');
+        const monthFormatted = month.padStart(2, '0');
+        const dayFormatted = day.padStart(2, '0');
+        const yearFormatted = year.slice(-2);
+        formattedDate = `${monthFormatted}/${dayFormatted}/${yearFormatted}`;
       }
       
       // Build the name: (TICKER) (STRIKE PRICE) OPTIONS - (EXPIRATION DATE MM/DD/YY) EXPIRATION

@@ -51,6 +51,16 @@
     tableData: calculationResults.tableData
   } : null;
 
+  // Debug pricing matrix data
+  $: if (calculationResults) {
+    console.log('🔍 OptionAnalysis Debug:');
+    console.log('📊 calculationResults:', calculationResults);
+    console.log('📋 tableData:', calculationResults.tableData);
+    console.log('⏰ timeHeaders:', calculationResults.tableData?.timeHeaders);
+    console.log('📈 rows:', calculationResults.tableData?.rows);
+    console.log('🎯 inputData:', inputData);
+  }
+
   function getCurrentPremium() {
     if (!calculationResults) return 0;
     const premiumRange = inputData.optionType === 'call' 
@@ -93,29 +103,51 @@
 
   // Find premium at specific price and time from pricing matrix
   function getPremiumAtPriceAndTime(targetPrice, timeIndex) {
-    if (!analysisData?.tableData) return null;
+    console.log('🔍 getPremiumAtPriceAndTime called:', { targetPrice, timeIndex });
+    
+    if (!analysisData?.tableData) {
+      console.log('❌ No tableData available');
+      return null;
+    }
     
     const targetPriceNum = parseFloat(targetPrice);
     const timeIndexNum = parseInt(timeIndex);
+    
+    console.log('📊 Table data:', analysisData.tableData);
+    console.log('📈 Rows available:', analysisData.tableData.rows?.length);
     
     // Find the closest stock price row
     let closestRow = null;
     let minDiff = Infinity;
     
-    analysisData.tableData.rows.forEach(row => {
-      const diff = Math.abs(row.stockPrice - targetPriceNum);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestRow = row;
-      }
-    });
+    if (analysisData.tableData.rows) {
+      analysisData.tableData.rows.forEach((row, index) => {
+        const diff = Math.abs(row.stockPrice - targetPriceNum);
+        console.log(`Row ${index}: stockPrice=${row.stockPrice}, diff=${diff}`);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestRow = row;
+        }
+      });
+    }
     
-    if (!closestRow) return null;
+    console.log('🎯 Closest row:', closestRow);
+    console.log('📊 Closest row premiums:', closestRow?.premiums);
+    
+    if (!closestRow) {
+      console.log('❌ No closest row found');
+      return null;
+    }
     
     // Find the premium at the specified time index
-    if (timeIndexNum < 0 || timeIndexNum >= closestRow.premiums.length) return null;
+    if (timeIndexNum < 0 || timeIndexNum >= closestRow.premiums.length) {
+      console.log('❌ Invalid time index:', { timeIndexNum, premiumsLength: closestRow.premiums.length });
+      return null;
+    }
     
-    return getAveragePremium(closestRow.premiums[timeIndexNum]);
+    const premium = getAveragePremium(closestRow.premiums[timeIndexNum]);
+    console.log('💰 Final premium:', premium);
+    return premium;
   }
 
   function calculatePriceImpact() {
@@ -138,15 +170,30 @@
   }
 
   function calculateTimeDecay() {
-    if (!analysisData || !timeHorizon) return null;
+    if (!analysisData || !timeHorizon) {
+      console.log('❌ TimeDecay: Missing data', { analysisData, timeHorizon });
+      return null;
+    }
     
     const currentPremium = analysisData.currentPremium;
     const timeIndex = parseInt(timeHorizon);
     
+    console.log('🕐 TimeDecay Calculation:', {
+      currentPremium,
+      timeIndex,
+      currentPrice: analysisData.currentPrice,
+      tableData: analysisData.tableData
+    });
+    
     // Get premium at current price but at the time horizon
     const futurePremium = getPremiumAtPriceAndTime(analysisData.currentPrice.toString(), timeIndex);
     
-    if (!currentPremium || !futurePremium) return null;
+    console.log('🔮 Future Premium:', futurePremium);
+    
+    if (!currentPremium || !futurePremium) {
+      console.log('❌ TimeDecay: Missing premiums', { currentPremium, futurePremium });
+      return null;
+    }
     
     const totalDecay = currentPremium - futurePremium;
     const decayPercentage = (totalDecay / currentPremium) * 100;
@@ -158,35 +205,62 @@
     const daysDiff = Math.max(1, timeDiff / (1000 * 60 * 60 * 24));
     const dailyDecay = totalDecay / daysDiff;
     
-    return {
+    const result = {
       dailyDecay,
       totalDecay,
       decayPercentage,
       futurePremium,
       remainingDays: getDaysToExpiry() - daysDiff
     };
+    
+    console.log('✅ TimeDecay Result:', result);
+    return result;
   }
 
   function calculateCombinedAnalysis() {
-    if (!analysisData || !targetPrice || !timeHorizon) return null;
+    console.log('🎯 Combined Analysis Calculation:', {
+      analysisData: !!analysisData,
+      targetPrice,
+      timeHorizon,
+      currentPrice: analysisData?.currentPrice,
+      optionType: analysisData?.optionType
+    });
+    
+    if (!analysisData || !targetPrice || !timeHorizon) {
+      console.log('❌ Combined Analysis: Missing required data');
+      return null;
+    }
     
     const currentPremium = analysisData.currentPremium;
     const targetPremium = getPremiumAtPriceAndTime(targetPrice, timeHorizon);
     
-    if (!currentPremium || !targetPremium) return null;
+    console.log('💰 Premium Analysis:', {
+      currentPremium,
+      targetPremium,
+      targetPrice: parseFloat(targetPrice),
+      currentPrice: analysisData.currentPrice
+    });
+    
+    if (!currentPremium || !targetPremium) {
+      console.log('❌ Combined Analysis: Missing premiums');
+      return null;
+    }
     
     const premiumChange = ((targetPremium - currentPremium) / currentPremium) * 100;
     const priceChange = ((parseFloat(targetPrice) - analysisData.currentPrice) / analysisData.currentPrice) * 100;
     
     const selectedTime = availableTimeHorizons[parseInt(timeHorizon)];
     
-    return {
+    const result = {
       priceChange,
       premiumChange,
       newPremium: targetPremium,
       isProfit: premiumChange > 0,
       timeLabel: selectedTime?.fullLabel || 'Unknown time'
     };
+    
+    console.log('✅ Combined Analysis Result:', result);
+    return result;
   }
 
   // Reactive calculations
@@ -281,6 +355,13 @@
           <button 
             class="analysis-button"
             on:click={() => {
+              console.log('🔘 Analysis Button Clicked!');
+              console.log('📊 Current State:', {
+                targetPrice,
+                timeHorizon,
+                analysisData: !!analysisData,
+                calculationResults: !!calculationResults
+              });
               // Force recalculation
               timeHorizon = timeHorizon;
             }}
@@ -356,7 +437,10 @@
       <div class="main-analysis-card">
         <div class="main-analysis-header">
           <div class="main-title-section">
-            <div class="main-icon">⏰</div>
+            <svg class="main-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12,6 12,12 16,14"/>
+            </svg>
             <h3 class="main-title">Time Decay Analysis</h3>
           </div>
           <div class="time-selector-section">
@@ -373,53 +457,136 @@
           </div>
         </div>
         
-        {#if timeDecay}
+        {#if timeDecay || combinedAnalysis}
           <div class="main-decay-result">
             <div class="main-decay-statement">
-              <div class="statement-icon">📉</div>
+              <svg class="statement-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 3v18h18"/>
+                <path d="M18.5 8.5l-5 5-2-2-4 4"/>
+              </svg>
               <div class="statement-content">
-                <div class="statement-text">
-                  Premiums are expected to 
-                  <span class="main-decay-value negative">decrease {timeDecay.decayPercentage.toFixed(1)}%</span>
-                </div>
-                <div class="statement-time">
-                  by {availableTimeHorizons[parseInt(timeHorizon)]?.fullLabel || 'selected time'} if price remains at current level
-                </div>
+                {#if targetPrice && combinedAnalysis}
+                  <!-- Price Target Analysis -->
+                  <div class="statement-text">
+                    Premiums are expected to 
+                    <span class="main-decay-value {combinedAnalysis.premiumChange > 0 ? 'positive' : 'negative'}">
+                      {combinedAnalysis.premiumChange > 0 ? 'increase' : 'decrease'} {Math.abs(combinedAnalysis.premiumChange).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div class="statement-time">
+                    by {combinedAnalysis.timeLabel} if price goes to ${targetPrice}
+                  </div>
+                {:else if timeDecay}
+                  <!-- Time Decay Analysis -->
+                  <div class="statement-text">
+                    Premiums are expected to 
+                    <span class="main-decay-value negative">decrease {timeDecay.decayPercentage.toFixed(1)}%</span>
+                  </div>
+                  <div class="statement-time">
+                    by {availableTimeHorizons[parseInt(timeHorizon)]?.fullLabel || 'selected time'} if price remains at current level
+                  </div>
+                {/if}
               </div>
             </div>
             
             <div class="main-metrics-grid">
-              <div class="main-metric-card">
-                <div class="metric-icon">💰</div>
-                <div class="metric-content">
-                  <div class="metric-label">Daily Decay</div>
-                  <div class="metric-value">${timeDecay.dailyDecay.toFixed(2)}</div>
+              {#if targetPrice && combinedAnalysis}
+                <!-- Price Target Metrics -->
+                <div class="main-metric-card">
+                  <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <div class="metric-content">
+                    <div class="metric-label">New Premium</div>
+                    <div class="metric-value">${combinedAnalysis.newPremium.toFixed(2)}</div>
+                  </div>
                 </div>
-              </div>
-              
-              <div class="main-metric-card">
-                <div class="metric-icon">📊</div>
-                <div class="metric-content">
-                  <div class="metric-label">Total Decay</div>
-                  <div class="metric-value">${timeDecay.totalDecay.toFixed(2)}</div>
+                
+                <div class="main-metric-card">
+                  <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M3 3v18h18"/>
+                    <path d="M18.5 8.5l-5 5-2-2-4 4"/>
+                  </svg>
+                  <div class="metric-content">
+                    <div class="metric-label">Price Change</div>
+                    <div class="metric-value {combinedAnalysis.priceChange > 0 ? 'positive' : 'negative'}">
+                      {combinedAnalysis.priceChange > 0 ? '+' : ''}{combinedAnalysis.priceChange.toFixed(1)}%
+                    </div>
+                  </div>
                 </div>
-              </div>
-              
-              <div class="main-metric-card">
-                <div class="metric-icon">🎯</div>
-                <div class="metric-content">
-                  <div class="metric-label">Future Premium</div>
-                  <div class="metric-value">${timeDecay.futurePremium.toFixed(2)}</div>
+                
+                <div class="main-metric-card">
+                  <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 1v6l3-3 3 3V1"/>
+                    <path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6"/>
+                    <path d="M3 12h18"/>
+                  </svg>
+                  <div class="metric-content">
+                    <div class="metric-label">Premium Change</div>
+                    <div class="metric-value {combinedAnalysis.premiumChange > 0 ? 'positive' : 'negative'}">
+                      {combinedAnalysis.premiumChange > 0 ? '+' : ''}{combinedAnalysis.premiumChange.toFixed(1)}%
+                    </div>
+                  </div>
                 </div>
-              </div>
-              
-              <div class="main-metric-card">
-                <div class="metric-icon">⏳</div>
-                <div class="metric-content">
-                  <div class="metric-label">Remaining Days</div>
-                  <div class="metric-value">{timeDecay.remainingDays}</div>
+                
+                <div class="main-metric-card">
+                  <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 2v20"/>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                  </svg>
+                  <div class="metric-content">
+                    <div class="metric-label">Time Horizon</div>
+                    <div class="metric-value">{availableTimeHorizons[parseInt(timeHorizon)]?.label || 'Unknown'}</div>
+                  </div>
                 </div>
-              </div>
+              {:else if timeDecay}
+                <!-- Time Decay Metrics -->
+                <div class="main-metric-card">
+                  <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 1v6l3-3 3 3V1"/>
+                    <path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6"/>
+                    <path d="M3 12h18"/>
+                  </svg>
+                  <div class="metric-content">
+                    <div class="metric-label">Daily Decay</div>
+                    <div class="metric-value">${timeDecay.dailyDecay.toFixed(2)}</div>
+                  </div>
+                </div>
+                
+                <div class="main-metric-card">
+                  <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M3 3v18h18"/>
+                    <path d="M18.5 8.5l-5 5-2-2-4 4"/>
+                  </svg>
+                  <div class="metric-content">
+                    <div class="metric-label">Total Decay</div>
+                    <div class="metric-value">${timeDecay.totalDecay.toFixed(2)}</div>
+                  </div>
+                </div>
+                
+                <div class="main-metric-card">
+                  <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <div class="metric-content">
+                    <div class="metric-label">Future Premium</div>
+                    <div class="metric-value">${timeDecay.futurePremium.toFixed(2)}</div>
+                  </div>
+                </div>
+                
+                <div class="main-metric-card">
+                  <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 2v20"/>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                  </svg>
+                  <div class="metric-content">
+                    <div class="metric-label">Remaining Days</div>
+                    <div class="metric-value">{timeDecay.remainingDays}</div>
+                  </div>
+                </div>
+              {/if}
             </div>
           </div>
         {/if}
@@ -666,10 +833,9 @@
   }
 
   .main-icon {
-    font-size: 2rem;
-    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    width: 2rem;
+    height: 2rem;
+    color: #a78bfa;
     filter: drop-shadow(0 2px 4px rgba(167, 139, 250, 0.3));
   }
 
@@ -743,7 +909,9 @@
   }
 
   .statement-icon {
-    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
+    color: #f87171;
     flex-shrink: 0;
   }
 
@@ -769,6 +937,11 @@
   .main-decay-value.negative {
     color: #f87171;
     text-shadow: 0 0 8px rgba(248, 113, 113, 0.3);
+  }
+
+  .main-decay-value.positive {
+    color: #10b981;
+    text-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
   }
 
   .statement-time {
@@ -803,7 +976,9 @@
   }
 
   .metric-icon {
-    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+    color: #a78bfa;
     flex-shrink: 0;
   }
 
@@ -825,6 +1000,14 @@
     font-weight: 800;
     color: #fff;
     font-family: 'Courier New', monospace;
+  }
+
+  .metric-value.positive {
+    color: #10b981;
+  }
+
+  .metric-value.negative {
+    color: #f87171;
   }
 
 

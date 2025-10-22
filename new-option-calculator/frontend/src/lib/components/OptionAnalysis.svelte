@@ -45,12 +45,12 @@
 
   // Analysis data
   $: analysisData = calculationResults ? {
-    currentPrice: useCustomEntryPrice && entryPrice ? parseFloat(entryPrice) : (inputData.stockPrice || 0),
+    currentPrice: useCustomEntryPrice ? getStockPriceFromPremium(parseFloat(entryPrice)) : (inputData.stockPrice || 0),
     strikePrice: inputData.strikePrice || 0,
     optionType: inputData.optionType || 'call',
     expiration: inputData.expiration || '',
     impliedVolatility: inputData.impliedVolatility || 0,
-    currentPremium: getCurrentPremium(),
+    currentPremium: useCustomEntryPrice && entryPrice ? parseFloat(entryPrice) : getCurrentPremium(),
     tableData: calculationResults.tableData,
     useCustomEntryPrice,
     entryPrice: entryPrice
@@ -63,6 +63,31 @@
       ? calculationResults.callPriceRange 
       : calculationResults.putPriceRange;
     return getAveragePremium(premiumRange);
+  }
+
+  // Find stock price that corresponds to a given premium (like analyze entry price in pricing matrix)
+  function getStockPriceFromPremium(targetPremium) {
+    if (!calculationResults?.tableData?.rows || !targetPremium) {
+      return inputData.stockPrice || 0;
+    }
+
+    const targetPremiumNum = parseFloat(targetPremium);
+    let closestRow = null;
+    let minDiff = Infinity;
+
+    // Look through all rows to find the one with premium closest to target
+    calculationResults.tableData.rows.forEach((row) => {
+      // Get the premium at the current time (index 0) for this stock price
+      const currentTimePremium = getAveragePremium(row.premiums[0]);
+      const diff = Math.abs(currentTimePremium - targetPremiumNum);
+      
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestRow = row;
+      }
+    });
+
+    return closestRow ? closestRow.stockPrice : (inputData.stockPrice || 0);
   }
 
   function getAveragePremium(premiumRange) {
@@ -272,13 +297,20 @@
         <h4 class="card-title">Current Scenario</h4>
         <div class="scenario-content">
           <div class="scenario-item">
-            <span class="scenario-label">Current Premium:</span>
+            <span class="scenario-label">{useCustomEntryPrice ? 'Entry Premium:' : 'Current Premium:'}</span>
             <span class="scenario-value">${analysisData.currentPremium.toFixed(2)}</span>
           </div>
-          <div class="scenario-item">
-            <span class="scenario-label">{useCustomEntryPrice ? 'Entry Price:' : 'Stock Price:'}</span>
-            <span class="scenario-value">${analysisData.currentPrice.toFixed(2)}</span>
-          </div>
+          {#if useCustomEntryPrice}
+            <div class="scenario-item">
+              <span class="scenario-label">Implied Stock Price:</span>
+              <span class="scenario-value">${analysisData.currentPrice.toFixed(2)}</span>
+            </div>
+          {:else}
+            <div class="scenario-item">
+              <span class="scenario-label">Stock Price:</span>
+              <span class="scenario-value">${analysisData.currentPrice.toFixed(2)}</span>
+            </div>
+          {/if}
           <div class="scenario-item">
             <span class="scenario-label">Days to Expiry:</span>
             <span class="scenario-value">{getDaysToExpiry()}</span>
@@ -333,7 +365,7 @@
           
           {#if useCustomEntryPrice}
             <div class="entry-price-input-group">
-              <label for="entry-price" class="input-label">Your Entry Price</label>
+              <label for="entry-price" class="input-label">Your Entry Premium</label>
               <div class="input-wrapper">
                 <span class="currency-symbol">$</span>
                 <input 
@@ -341,11 +373,11 @@
                   type="number" 
                   step="0.01" 
                   bind:value={entryPrice}
-                  placeholder="315.00"
+                  placeholder="2.50"
                   class="entry-price-input"
                 />
               </div>
-              <p class="input-hint">Enter the price you entered the position at</p>
+              <p class="input-hint">Enter the premium you paid for the option</p>
             </div>
           {:else}
             <div class="current-price-info">

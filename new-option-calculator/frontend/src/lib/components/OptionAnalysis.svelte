@@ -295,10 +295,20 @@
     return result;
   }
 
-  // Reactive calculations
+  // Reactive calculations with debouncing
   $: priceImpact = calculatePriceImpact();
   $: timeDecay = calculateTimeDecay();
-  $: combinedAnalysis = calculateCombinedAnalysis();
+  
+  // Only calculate combined analysis if we have a valid target price
+  $: {
+    const shouldCalculate = targetPrice && targetPrice !== '' && parseFloat(targetPrice) > 0;
+    console.log('🔄 Combined Analysis Trigger:', {
+      targetPrice,
+      shouldCalculate,
+      parsedValue: parseFloat(targetPrice)
+    });
+    combinedAnalysis = shouldCalculate ? calculateCombinedAnalysis() : null;
+  }
 
   function getAnalysisColor(value, isPositive) {
     if (value > 0) return isPositive ? 'positive' : 'negative';
@@ -398,8 +408,9 @@
                 analysisData: !!analysisData,
                 calculationResults: !!calculationResults
               });
-              // Force recalculation
+              // Force recalculation by triggering reactive statements
               timeHorizon = timeHorizon;
+              targetPrice = targetPrice;
             }}
           >
             <svg class="analysis-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">

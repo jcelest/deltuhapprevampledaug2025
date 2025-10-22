@@ -3,6 +3,7 @@ import CalculationEngine from './CalculationEngine.svelte';
 import PricingMatrix from './PricingMatrix.svelte';
 import GreeksDashboard from './GreeksDashboard.svelte';
 import MarketData from './MarketData.svelte';
+import OptionAnalysis from './OptionAnalysis.svelte';
 
 /**
  * @typedef {Object} ComponentConfig
@@ -55,6 +56,16 @@ export const componentRegistry = {
       refreshInterval: 5000,
       showVolume: true,
       showChange: true
+    }
+  },
+  OptionAnalysis: {
+    component: OptionAnalysis,
+    title: 'Option Analysis',
+    description: 'Advanced analysis with price targets, time decay, and volatility impact',
+    defaultConfig: {
+      showTimeDecay: true,
+      showPriceTargets: true,
+      showVolatilityAnalysis: true
     }
   }
 };

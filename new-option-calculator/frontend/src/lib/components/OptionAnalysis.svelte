@@ -300,15 +300,9 @@
   $: timeDecay = calculateTimeDecay();
   
   // Only calculate combined analysis if we have a valid target price
-  $: {
-    const shouldCalculate = targetPrice && targetPrice !== '' && parseFloat(targetPrice) > 0;
-    console.log('🔄 Combined Analysis Trigger:', {
-      targetPrice,
-      shouldCalculate,
-      parsedValue: parseFloat(targetPrice)
-    });
-    combinedAnalysis = shouldCalculate ? calculateCombinedAnalysis() : null;
-  }
+  $: combinedAnalysis = (targetPrice && targetPrice !== '' && parseFloat(targetPrice) > 0) 
+    ? calculateCombinedAnalysis() 
+    : null;
 
   function getAnalysisColor(value, isPositive) {
     if (value > 0) return isPositive ? 'positive' : 'negative';

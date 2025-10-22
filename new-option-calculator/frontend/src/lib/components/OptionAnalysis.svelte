@@ -10,6 +10,8 @@
   // Analysis state
   let targetPrice = '';
   let timeHorizon = '0'; // index
+  let entryPrice = ''; // user can input custom entry price
+  let useCustomEntryPrice = false;
   let volatilityAdjustment = 0; // percentage change
   let showAdvanced = false;
 
@@ -50,13 +52,15 @@
 
   // Analysis data
   $: analysisData = calculationResults ? {
-    currentPrice: inputData.stockPrice || 0,
+    currentPrice: useCustomEntryPrice && entryPrice ? parseFloat(entryPrice) : (inputData.stockPrice || 0),
     strikePrice: inputData.strikePrice || 0,
     optionType: inputData.optionType || 'call',
     expiration: inputData.expiration || '',
     impliedVolatility: inputData.impliedVolatility || 0,
     currentPremium: getCurrentPremium(),
-    tableData: calculationResults.tableData
+    tableData: calculationResults.tableData,
+    useCustomEntryPrice,
+    entryPrice: entryPrice
   } : null;
 
   // Debug pricing matrix data
@@ -352,8 +356,8 @@
             <span class="scenario-value">${analysisData.currentPremium.toFixed(2)}</span>
           </div>
           <div class="scenario-item">
-            <span class="scenario-label">Stock Price:</span>
-            <span class="scenario-value">${analysisData.currentPrice}</span>
+            <span class="scenario-label">{useCustomEntryPrice ? 'Entry Price:' : 'Stock Price:'}</span>
+            <span class="scenario-value">${analysisData.currentPrice.toFixed(2)}</span>
           </div>
           <div class="scenario-item">
             <span class="scenario-label">Days to Expiry:</span>
@@ -391,27 +395,31 @@
           </div>
         </div>
         
-        <div class="analysis-button-container">
-          <button 
-            class="analysis-button"
-            on:click={() => {
-              console.log('🔘 Analysis Button Clicked!');
-              console.log('📊 Current State:', {
-                targetPrice,
-                timeHorizon,
-                analysisData: !!analysisData,
-                calculationResults: !!calculationResults
-              });
-              // Force recalculation by triggering reactive statements
-              timeHorizon = timeHorizon;
-              targetPrice = targetPrice;
-            }}
-          >
-            <svg class="analysis-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Analyze Scenario
-          </button>
+        <div class="entry-price-section">
+          <div class="entry-price-toggle">
+            <label class="toggle-label">
+              <input 
+                type="checkbox" 
+                bind:checked={useCustomEntryPrice}
+                class="toggle-checkbox"
+              />
+              <span class="toggle-text">Use custom entry price</span>
+            </label>
+          </div>
+          
+          {#if useCustomEntryPrice}
+            <div class="entry-price-input">
+              <label for="entry-price">Entry Price ($)</label>
+              <input 
+                id="entry-price"
+                type="number" 
+                step="0.01" 
+                bind:value={entryPrice}
+                placeholder="Enter your entry price"
+                class="price-input"
+              />
+            </div>
+          {/if}
         </div>
         
         {#if combinedAnalysis}
@@ -834,6 +842,71 @@
   .analysis-icon {
     width: 16px;
     height: 16px;
+  }
+
+  /* Entry Price Section */
+  .entry-price-section {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    border-radius: 12px;
+  }
+
+  .entry-price-toggle {
+    margin-bottom: 1rem;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #c4b5fd;
+  }
+
+  .toggle-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #a78bfa;
+    cursor: pointer;
+  }
+
+  .toggle-text {
+    user-select: none;
+  }
+
+  .entry-price-input {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .entry-price-input label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #c4b5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .entry-price-input .price-input {
+    background: rgba(17, 24, 39, 0.9);
+    border: 2px solid rgba(167, 139, 250, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s;
+  }
+
+  .entry-price-input .price-input:focus {
+    outline: none;
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
   }
 
   /* Main Analysis Card - Time Decay as Main Event */

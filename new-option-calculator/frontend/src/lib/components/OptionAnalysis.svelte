@@ -103,7 +103,7 @@
 
   // Find premium at specific price and time from pricing matrix
   function getPremiumAtPriceAndTime(targetPrice, timeIndex) {
-    console.log('🔍 getPremiumAtPriceAndTime called:', { targetPrice, timeIndex });
+    console.log('🔍 getPremiumAtPriceAndTime called:', { targetPrice, timeIndex, targetPriceType: typeof targetPrice });
     
     if (!analysisData?.tableData) {
       console.log('❌ No tableData available');
@@ -112,6 +112,8 @@
     
     const targetPriceNum = parseFloat(targetPrice);
     const timeIndexNum = parseInt(timeIndex);
+    
+    console.log('🔢 Parsed values:', { targetPriceNum, timeIndexNum });
     
     console.log('📊 Table data:', analysisData.tableData);
     console.log('📈 Rows available:', analysisData.tableData.rows?.length);
@@ -223,22 +225,34 @@
       targetPrice,
       timeHorizon,
       currentPrice: analysisData?.currentPrice,
-      optionType: analysisData?.optionType
+      optionType: analysisData?.optionType,
+      targetPriceType: typeof targetPrice,
+      targetPriceValue: targetPrice,
+      timeHorizonType: typeof timeHorizon,
+      timeHorizonValue: timeHorizon
     });
     
     if (!analysisData || !targetPrice || !timeHorizon) {
-      console.log('❌ Combined Analysis: Missing required data');
+      console.log('❌ Combined Analysis: Missing required data', {
+        hasAnalysisData: !!analysisData,
+        hasTargetPrice: !!targetPrice,
+        hasTimeHorizon: !!timeHorizon,
+        targetPrice: targetPrice,
+        timeHorizon: timeHorizon
+      });
       return null;
     }
     
     const currentPremium = analysisData.currentPremium;
-    const targetPremium = getPremiumAtPriceAndTime(targetPrice, timeHorizon);
+    const targetPriceNum = parseFloat(targetPrice);
+    const targetPremium = getPremiumAtPriceAndTime(targetPriceNum.toString(), timeHorizon);
     
     console.log('💰 Premium Analysis:', {
       currentPremium,
       targetPremium,
-      targetPrice: parseFloat(targetPrice),
-      currentPrice: analysisData.currentPrice
+      targetPrice: targetPriceNum,
+      currentPrice: analysisData.currentPrice,
+      targetPriceString: targetPriceNum.toString()
     });
     
     if (!currentPremium || !targetPremium) {
@@ -247,7 +261,7 @@
     }
     
     const premiumChange = ((targetPremium - currentPremium) / currentPremium) * 100;
-    const priceChange = ((parseFloat(targetPrice) - analysisData.currentPrice) / analysisData.currentPrice) * 100;
+    const priceChange = ((targetPriceNum - analysisData.currentPrice) / analysisData.currentPrice) * 100;
     
     const selectedTime = availableTimeHorizons[parseInt(timeHorizon)];
     

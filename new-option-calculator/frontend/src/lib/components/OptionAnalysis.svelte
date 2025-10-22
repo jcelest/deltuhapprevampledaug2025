@@ -308,6 +308,12 @@
     ? calculateCombinedAnalysis() 
     : null;
 
+  // Force recalculation when time horizon changes
+  $: if (timeHorizon && targetPrice && targetPrice !== '' && parseFloat(targetPrice) > 0) {
+    // Trigger recalculation by accessing the reactive variable
+    combinedAnalysis = calculateCombinedAnalysis();
+  }
+
   function getAnalysisColor(value, isPositive) {
     if (value > 0) return isPositive ? 'positive' : 'negative';
     if (value < 0) return isPositive ? 'negative' : 'positive';
@@ -396,28 +402,43 @@
         </div>
         
         <div class="entry-price-section">
-          <div class="entry-price-toggle">
-            <label class="toggle-label">
+          <div class="entry-price-header">
+            <h4 class="section-title">Entry Price Analysis</h4>
+            <div class="toggle-switch">
               <input 
                 type="checkbox" 
+                id="entry-price-toggle"
                 bind:checked={useCustomEntryPrice}
-                class="toggle-checkbox"
+                class="toggle-input"
               />
-              <span class="toggle-text">Use custom entry price</span>
-            </label>
+              <label for="entry-price-toggle" class="toggle-slider">
+                <span class="toggle-label-text">Custom Entry Price</span>
+              </label>
+            </div>
           </div>
           
           {#if useCustomEntryPrice}
-            <div class="entry-price-input">
-              <label for="entry-price">Entry Price ($)</label>
-              <input 
-                id="entry-price"
-                type="number" 
-                step="0.01" 
-                bind:value={entryPrice}
-                placeholder="Enter your entry price"
-                class="price-input"
-              />
+            <div class="entry-price-input-group">
+              <label for="entry-price" class="input-label">Your Entry Price</label>
+              <div class="input-wrapper">
+                <span class="currency-symbol">$</span>
+                <input 
+                  id="entry-price"
+                  type="number" 
+                  step="0.01" 
+                  bind:value={entryPrice}
+                  placeholder="315.00"
+                  class="entry-price-input"
+                />
+              </div>
+              <p class="input-hint">Enter the price you entered the position at</p>
+            </div>
+          {:else}
+            <div class="current-price-info">
+              <div class="info-item">
+                <span class="info-label">Using Current Market Price:</span>
+                <span class="info-value">${analysisData?.currentPrice?.toFixed(2) || '0.00'}</span>
+              </div>
             </div>
           {/if}
         </div>
@@ -846,45 +867,88 @@
 
   /* Entry Price Section */
   .entry-price-section {
-    margin: 1rem 0;
-    padding: 1rem;
-    background: rgba(17, 24, 39, 0.6);
+    margin: 1.5rem 0;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, rgba(196, 181, 253, 0.04) 100%);
     border: 1px solid rgba(167, 139, 250, 0.2);
-    border-radius: 12px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
-  .entry-price-toggle {
-    margin-bottom: 1rem;
+  .entry-price-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
   }
 
-  .toggle-label {
+  .section-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+  }
+
+  /* Toggle Switch */
+  .toggle-switch {
+    position: relative;
+  }
+
+  .toggle-input {
+    display: none;
+  }
+
+  .toggle-slider {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
     cursor: pointer;
+    padding: 0.5rem 1rem;
+    background: rgba(17, 24, 39, 0.8);
+    border: 2px solid rgba(167, 139, 250, 0.3);
+    border-radius: 12px;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    background: #6b7280;
+    border-radius: 50%;
+    transition: all 0.3s;
+  }
+
+  .toggle-input:checked + .toggle-slider {
+    background: rgba(167, 139, 250, 0.2);
+    border-color: #a78bfa;
+  }
+
+  .toggle-input:checked + .toggle-slider::before {
+    background: #a78bfa;
+    transform: translateY(-50%) translateX(24px);
+  }
+
+  .toggle-label-text {
     font-size: 0.875rem;
     font-weight: 600;
     color: #c4b5fd;
+    margin-left: 1.5rem;
   }
 
-  .toggle-checkbox {
-    width: 18px;
-    height: 18px;
-    accent-color: #a78bfa;
-    cursor: pointer;
-  }
-
-  .toggle-text {
-    user-select: none;
-  }
-
-  .entry-price-input {
+  /* Entry Price Input */
+  .entry-price-input-group {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
-  .entry-price-input label {
+  .input-label {
     font-size: 0.875rem;
     font-weight: 600;
     color: #c4b5fd;
@@ -892,21 +956,73 @@
     letter-spacing: 0.05em;
   }
 
-  .entry-price-input .price-input {
-    background: rgba(17, 24, 39, 0.9);
-    border: 2px solid rgba(167, 139, 250, 0.3);
-    border-radius: 8px;
-    padding: 0.75rem;
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 600;
-    transition: all 0.3s;
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
   }
 
-  .entry-price-input .price-input:focus {
+  .currency-symbol {
+    position: absolute;
+    left: 1rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #a78bfa;
+    z-index: 1;
+  }
+
+  .entry-price-input {
+    width: 100%;
+    background: rgba(17, 24, 39, 0.9);
+    border: 2px solid rgba(167, 139, 250, 0.3);
+    border-radius: 12px;
+    padding: 0.875rem 0.875rem 0.875rem 2.5rem;
+    color: #fff;
+    font-size: 1.125rem;
+    font-weight: 700;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .entry-price-input:focus {
     outline: none;
     border-color: #a78bfa;
-    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2), 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+  }
+
+  .input-hint {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin: 0;
+    font-style: italic;
+  }
+
+  /* Current Price Info */
+  .current-price-info {
+    padding: 1rem;
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    border-radius: 12px;
+  }
+
+  .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .info-label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    font-weight: 500;
+  }
+
+  .info-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #a78bfa;
+    font-family: 'Courier New', monospace;
   }
 
   /* Main Analysis Card - Time Decay as Main Event */

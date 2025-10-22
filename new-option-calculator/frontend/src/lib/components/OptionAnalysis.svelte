@@ -840,7 +840,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    flex-wrap: nowrap;
+    min-width: fit-content;
   }
 
   .toggle-input {
@@ -848,17 +848,16 @@
   }
 
   .toggle-slider {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 0.75rem;
     cursor: pointer;
-    padding: 0.5rem 1.75rem 0.5rem 2.25rem; /* extra left/right so knob never overlaps text */
+    padding: 0.5rem 0.75rem 0.5rem 2.5rem; /* left padding for knob space */
     background: rgba(17, 24, 39, 0.8);
     border: 2px solid rgba(167, 139, 250, 0.3);
     border-radius: 12px;
     transition: all 0.3s;
     position: relative;
-    white-space: nowrap; /* prevent wrapping over label */
+    min-width: 140px; /* ensure enough space for text */
   }
 
   .toggle-slider::before {
@@ -867,11 +866,12 @@
     left: 0.5rem;
     top: 50%;
     transform: translateY(-50%);
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     background: #6b7280;
     border-radius: 50%;
     transition: all 0.3s;
+    z-index: 2;
   }
 
   .toggle-input:checked + .toggle-slider {
@@ -881,14 +881,29 @@
 
   .toggle-input:checked + .toggle-slider::before {
     background: #a78bfa;
-    transform: translateY(-50%) translateX(24px);
+    transform: translateY(-50%) translateX(20px);
   }
 
   .toggle-label-text {
     font-size: 0.875rem;
     font-weight: 600;
     color: #c4b5fd;
-    margin-left: 0.25rem;
+    margin-left: 0.5rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Mobile responsive toggle */
+  @media (max-width: 768px) {
+    .toggle-slider {
+      min-width: 120px;
+      padding: 0.5rem 0.5rem 0.5rem 2.25rem;
+    }
+    
+    .toggle-label-text {
+      font-size: 0.8rem;
+      margin-left: 0.25rem;
+    }
   }
 
   /* Entry Price Input */

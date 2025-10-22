@@ -13,6 +13,14 @@
   let volatilityAdjustment = 0; // percentage change
   let showAdvanced = false;
 
+  // Debug initial state
+  console.log('🔧 OptionAnalysis Initial State:', {
+    targetPrice,
+    timeHorizon,
+    calculationResults: !!calculationResults,
+    inputData: !!inputData
+  });
+
   // Get available time horizons from pricing matrix with proper formatting
   $: availableTimeHorizons = calculationResults?.tableData?.timeHeaders?.map((timeHeader, index) => {
     const date = new Date(timeHeader);
@@ -232,13 +240,17 @@
       timeHorizonValue: timeHorizon
     });
     
-    if (!analysisData || !targetPrice || !timeHorizon) {
+    if (!analysisData || targetPrice === '' || targetPrice === null || targetPrice === undefined || !timeHorizon) {
       console.log('❌ Combined Analysis: Missing required data', {
         hasAnalysisData: !!analysisData,
-        hasTargetPrice: !!targetPrice,
-        hasTimeHorizon: !!timeHorizon,
         targetPrice: targetPrice,
-        timeHorizon: timeHorizon
+        timeHorizon: timeHorizon,
+        targetPriceEmpty: targetPrice === '',
+        targetPriceNull: targetPrice === null,
+        targetPriceUndefined: targetPrice === undefined,
+        timeHorizonEmpty: timeHorizon === '',
+        timeHorizonNull: timeHorizon === null,
+        timeHorizonUndefined: timeHorizon === undefined
       });
       return null;
     }
@@ -297,7 +309,11 @@
   // Auto-populate target price when entry price analysis is available
   $: if (entryPriceAnalysis && entryPriceAnalysis.entryPrice) {
     targetPrice = entryPriceAnalysis.entryPrice.toString();
+    console.log('🎯 Auto-populated targetPrice:', targetPrice);
   }
+
+  // Debug targetPrice changes
+  $: console.log('📝 targetPrice changed:', targetPrice, typeof targetPrice);
 </script>
 
 <div class="deltuh-option-analysis">

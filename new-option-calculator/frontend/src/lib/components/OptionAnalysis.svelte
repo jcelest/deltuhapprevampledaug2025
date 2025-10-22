@@ -358,6 +358,7 @@
                 class="toggle-input"
               />
               <label for="entry-price-toggle" class="toggle-slider">
+                <span class="switch-track"><span class="switch-thumb"></span></span>
                 <span class="toggle-label-text">Custom Entry Price</span>
               </label>
             </div>
@@ -811,6 +812,60 @@
     height: 16px;
   }
 
+  /* Prevent horizontal overflow and ensure responsive sizing */
+  .deltuh-option-analysis {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  .analysis-header,
+  .analysis-content,
+  .analysis-card,
+  .main-analysis-card {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .input-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .input-row .input-group {
+    min-width: 0; /* allow children to shrink within row */
+    flex: 1 1 240px;
+  }
+
+  .price-input,
+  .time-select,
+  .entry-price-input,
+  select,
+  input[type="number"],
+  input[type="text"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .impact-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .main-metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 768px) {
+    .analysis-header { flex-wrap: wrap; }
+    .main-metrics-grid { grid-template-columns: 1fr; }
+  }
+
   /* Entry Price Section */
   .entry-price-section {
     margin: 1.5rem 0;
@@ -848,30 +903,39 @@
   }
 
   .toggle-slider {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     cursor: pointer;
-    padding: 0.5rem 0.75rem 0.5rem 2.5rem; /* left padding for knob space */
+    padding: 0.375rem 0.75rem 0.375rem 0.75rem;
     background: rgba(17, 24, 39, 0.8);
     border: 2px solid rgba(167, 139, 250, 0.3);
-    border-radius: 12px;
+    border-radius: 9999px;
     transition: all 0.3s;
     position: relative;
-    min-width: 140px; /* ensure enough space for text */
+    gap: 0.5rem;
+    white-space: nowrap;
   }
 
-  .toggle-slider::before {
-    content: '';
+  .switch-track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: rgba(31, 41, 55, 0.9);
+    border: 1px solid rgba(167, 139, 250, 0.35);
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
+
+  .switch-thumb {
     position: absolute;
-    left: 0.5rem;
     top: 50%;
+    left: 4px;
     transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     background: #6b7280;
-    border-radius: 50%;
-    transition: all 0.3s;
-    z-index: 2;
+    border-radius: 9999px;
+    transition: transform 0.2s ease, background 0.2s ease;
   }
 
   .toggle-input:checked + .toggle-slider {
@@ -879,10 +943,10 @@
     border-color: #a78bfa;
   }
 
-  .toggle-input:checked + .toggle-slider::before {
+.toggle-input:checked + .toggle-slider .switch-thumb {
     background: #a78bfa;
     transform: translateY(-50%) translateX(20px);
-  }
+}
 
   .toggle-label-text {
     font-size: 0.875rem;
@@ -895,10 +959,10 @@
 
   /* Mobile responsive toggle */
   @media (max-width: 768px) {
-    .toggle-slider {
-      min-width: 120px;
-      padding: 0.5rem 0.5rem 0.5rem 2.25rem;
-    }
+    .toggle-slider { padding: 0.35rem 0.6rem; }
+    .switch-track { width: 40px; height: 22px; }
+    .switch-thumb { width: 14px; height: 14px; left: 4px; }
+    .toggle-input:checked + .toggle-slider .switch-thumb { transform: translateY(-50%) translateX(18px); }
     
     .toggle-label-text {
       font-size: 0.8rem;

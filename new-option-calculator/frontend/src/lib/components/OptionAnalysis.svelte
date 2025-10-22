@@ -157,6 +157,8 @@
     
     const premium = getAveragePremium(closestRow.premiums[timeIndexNum]);
     console.log('💰 Final premium:', premium);
+    console.log('📊 Premium range at this time:', closestRow.premiums[timeIndexNum]);
+    console.log('🎯 Target price:', targetPriceNum, 'Time index:', timeIndexNum);
     return premium;
   }
 
@@ -240,7 +242,7 @@
       timeHorizonValue: timeHorizon
     });
     
-    if (!analysisData || targetPrice === '' || targetPrice === null || targetPrice === undefined || !timeHorizon) {
+    if (!analysisData || !targetPrice || targetPrice === '' || targetPrice === null || targetPrice === undefined || parseFloat(targetPrice) <= 0 || !timeHorizon) {
       console.log('❌ Combined Analysis: Missing required data', {
         hasAnalysisData: !!analysisData,
         targetPrice: targetPrice,
@@ -250,7 +252,11 @@
         targetPriceUndefined: targetPrice === undefined,
         timeHorizonEmpty: timeHorizon === '',
         timeHorizonNull: timeHorizon === null,
-        timeHorizonUndefined: timeHorizon === undefined
+        timeHorizonUndefined: timeHorizon === undefined,
+        targetPriceNumber: typeof targetPrice === 'number',
+        targetPriceString: typeof targetPrice === 'string',
+        parsedTargetPrice: parseFloat(targetPrice),
+        isValidTargetPrice: parseFloat(targetPrice) > 0
       });
       return null;
     }

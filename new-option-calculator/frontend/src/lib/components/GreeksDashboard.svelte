@@ -114,31 +114,6 @@
         {/each}
       </div>
 
-      {#if inputData.optionType}
-        <div class="analysis-card">
-          <h4 class="analysis-title">Option Analysis</h4>
-          <div class="analysis-content">
-            <div class="analysis-point">
-              <span class="analysis-bullet">•</span>
-              <span class="analysis-text">
-                Delta indicates the option will move ~${Math.abs(greeksData.delta).toFixed(2)} for every $1 move in {inputData.ticker || 'the underlying'}
-              </span>
-            </div>
-            <div class="analysis-point">
-              <span class="analysis-bullet">•</span>
-              <span class="analysis-text">
-                Theta shows ${Math.abs(greeksData.theta).toFixed(2)} daily time decay
-              </span>
-            </div>
-            <div class="analysis-point">
-              <span class="analysis-bullet">•</span>
-              <span class="analysis-text">
-                Vega sensitivity: ${greeksData.vega.toFixed(2)} per 1% volatility change
-              </span>
-            </div>
-          </div>
-        </div>
-      {/if}
     {:else}
       <div class="empty-state">
         <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -313,47 +288,6 @@
     line-height: 1.3;
   }
 
-  /* Analysis Card */
-  .analysis-card {
-    background: linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(196, 181, 253, 0.02));
-    border: 1px solid rgba(167, 139, 250, 0.15);
-    border-radius: 12px;
-    padding: 1rem;
-    flex-shrink: 0;
-  }
-
-  .analysis-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #c4b5fd;
-    margin: 0 0 0.75rem 0;
-  }
-
-  .analysis-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .analysis-point {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .analysis-bullet {
-    color: #a78bfa;
-    font-weight: bold;
-    font-size: 0.875rem;
-    line-height: 1.2;
-    margin-top: 0.1rem;
-  }
-
-  .analysis-text {
-    font-size: 0.75rem;
-    color: #94a3b8;
-    line-height: 1.4;
-  }
 
   /* Empty State */
   .empty-state {

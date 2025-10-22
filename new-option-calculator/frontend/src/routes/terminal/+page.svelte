@@ -10,6 +10,7 @@
   import CalculationEngine from '../../lib/components/CalculationEngine.svelte';
   import PricingMatrix from '../../lib/components/PricingMatrix.svelte';
   import GreeksDashboard from '../../lib/components/GreeksDashboard.svelte';
+  import OptionAnalysis from '../../lib/components/OptionAnalysis.svelte';
   import MarketData from '../../lib/components/MarketData.svelte';
   import IVRank from '../../lib/components/IVRank.svelte';
   import ComponentSelector from '../../lib/components/ComponentSelector.svelte';
@@ -21,6 +22,7 @@
     CalculationEngine,
     PricingMatrix,
     GreeksDashboard,
+    OptionAnalysis,
     MarketData,
     IVRank
   };
@@ -29,6 +31,7 @@
     CalculationEngine: { title: 'Calculation Engine', defaultSize: { w: 12, h: 7 } },
     PricingMatrix: { title: 'Pricing Matrix', defaultSize: { w: 12, h: 4 } },
     GreeksDashboard: { title: 'Greeks Dashboard', defaultSize: { w: 6, h: 5 } },
+    OptionAnalysis: { title: 'Option Analysis', defaultSize: { w: 6, h: 6 } },
     MarketData: { title: 'Market Data', defaultSize: { w: 6, h: 5 } },
     IVRank: { title: 'IV Rank', defaultSize: { w: 6, h: 5 } }
   };
@@ -46,6 +49,7 @@
   let inputData = {};
   let currentTerminalId = null;
   let componentKey = 0; // Key to force re-render of components
+  let entryPriceAnalysis = null; // Store entry price analysis from PricingMatrix
   
   const API_URL = import.meta.env.VITE_API_URL || 'https://deltuhapprevampledaug2025.onrender.com';
 
@@ -601,6 +605,10 @@
     }
   }
 
+  function handleEntryPriceAnalysis(event) {
+    entryPriceAnalysis = event.detail;
+  }
+
   function hasPricingMatrix() {
     return $layout.some(item => item.component === 'PricingMatrix');
   }
@@ -1025,11 +1033,13 @@
               loadedInputData={inputData}
               {isMobile}
               hasPricingMatrix={hasPricingMatrix()}
+              entryPriceAnalysis={entryPriceAnalysis}
               on:configChange={(e) => handleConfigChange(item.id, e.detail.config)}
               on:remove={() => handleRemoveComponent(item.id)}
               on:calculationComplete={handleCalculationComplete}
               on:resultsCleared={handleResultsCleared}
               on:requestComponent={handleRequestComponent}
+              on:entryPriceAnalysis={handleEntryPriceAnalysis}
             />
           {/if}
         </div>

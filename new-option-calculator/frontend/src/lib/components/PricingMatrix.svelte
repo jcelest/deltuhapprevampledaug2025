@@ -151,6 +151,15 @@
       entryPriceHeatmapMax = 0;
     }
   }
+
+  // Dispatch entry price analysis data to OptionAnalysis component
+  $: if (isAnalyzing && entryPrice > 0 && calculationResults) {
+    dispatch('entryPriceAnalysis', {
+      entryPrice: parseFloat(entryPrice),
+      isAnalyzing: true,
+      timestamp: new Date().toISOString()
+    });
+  }
 </script>
 
 <div class="deltuh-pricing-matrix">

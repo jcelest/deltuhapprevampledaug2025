@@ -9,21 +9,36 @@
 
   // Analysis state
   let targetPrice = '';
-  let timeHorizon = '1'; // days
+  let timeHorizon = '0'; // index
   let volatilityAdjustment = 0; // percentage change
   let showAdvanced = false;
 
-  // Get available time horizons from pricing matrix
+  // Get available time horizons from pricing matrix with proper formatting
   $: availableTimeHorizons = calculationResults?.tableData?.timeHeaders?.map((timeHeader, index) => {
     const date = new Date(timeHeader);
-    const now = new Date();
-    const daysDiff = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const dateStr = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+    
     return {
-      value: daysDiff.toString(),
-      label: `${daysDiff} day${daysDiff !== 1 ? 's' : ''}`,
-      date: timeHeader
+      value: index.toString(),
+      label: `${dayName}, ${dateStr}`,
+      timeLabel: timeStr,
+      fullLabel: `${dayName}, ${dateStr} ${timeStr}`,
+      date: timeHeader,
+      index: index
     };
   }) || [];
+
+  // Group time horizons by date for better organization
+  $: groupedTimeHorizons = availableTimeHorizons.reduce((groups, horizon) => {
+    const dateKey = horizon.label; // "WED, 10/22/2025"
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
+    }
+    groups[dateKey].push(horizon);
+    return groups;
+  }, {});
 
   // Analysis data
   $: analysisData = calculationResults ? {
@@ -77,11 +92,11 @@
   }
 
   // Find premium at specific price and time from pricing matrix
-  function getPremiumAtPriceAndTime(targetPrice, timeHorizonDays) {
+  function getPremiumAtPriceAndTime(targetPrice, timeIndex) {
     if (!analysisData?.tableData) return null;
     
     const targetPriceNum = parseFloat(targetPrice);
-    const timeHorizonNum = parseInt(timeHorizonDays);
+    const timeIndexNum = parseInt(timeIndex);
     
     // Find the closest stock price row
     let closestRow = null;
@@ -97,11 +112,10 @@
     
     if (!closestRow) return null;
     
-    // Find the premium at the specified time horizon
-    const timeIndex = Math.min(timeHorizonNum - 1, closestRow.premiums.length - 1);
-    if (timeIndex < 0 || timeIndex >= closestRow.premiums.length) return null;
+    // Find the premium at the specified time index
+    if (timeIndexNum < 0 || timeIndexNum >= closestRow.premiums.length) return null;
     
-    return getAveragePremium(closestRow.premiums[timeIndex]);
+    return getAveragePremium(closestRow.premiums[timeIndexNum]);
   }
 
   function calculatePriceImpact() {
@@ -127,23 +141,29 @@
     if (!analysisData || !timeHorizon) return null;
     
     const currentPremium = analysisData.currentPremium;
-    const timeHorizonDays = parseInt(timeHorizon);
+    const timeIndex = parseInt(timeHorizon);
     
     // Get premium at current price but at the time horizon
-    const futurePremium = getPremiumAtPriceAndTime(analysisData.currentPrice.toString(), timeHorizonDays);
+    const futurePremium = getPremiumAtPriceAndTime(analysisData.currentPrice.toString(), timeIndex);
     
     if (!currentPremium || !futurePremium) return null;
     
     const totalDecay = currentPremium - futurePremium;
     const decayPercentage = (totalDecay / currentPremium) * 100;
-    const dailyDecay = totalDecay / timeHorizonDays;
+    
+    // Calculate daily decay based on time difference
+    const selectedTime = availableTimeHorizons[timeIndex];
+    const currentTime = new Date();
+    const timeDiff = new Date(selectedTime?.date || currentTime) - currentTime;
+    const daysDiff = Math.max(1, timeDiff / (1000 * 60 * 60 * 24));
+    const dailyDecay = totalDecay / daysDiff;
     
     return {
       dailyDecay,
       totalDecay,
       decayPercentage,
       futurePremium,
-      remainingDays: getDaysToExpiry() - timeHorizonDays
+      remainingDays: getDaysToExpiry() - daysDiff
     };
   }
 
@@ -158,12 +178,14 @@
     const premiumChange = ((targetPremium - currentPremium) / currentPremium) * 100;
     const priceChange = ((parseFloat(targetPrice) - analysisData.currentPrice) / analysisData.currentPrice) * 100;
     
+    const selectedTime = availableTimeHorizons[parseInt(timeHorizon)];
+    
     return {
       priceChange,
       premiumChange,
       newPremium: targetPremium,
       isProfit: premiumChange > 0,
-      timeHorizonDays: parseInt(timeHorizon)
+      timeLabel: selectedTime?.fullLabel || 'Unknown time'
     };
   }
 
@@ -249,10 +271,25 @@
               class="time-select"
             >
               {#each availableTimeHorizons as horizon}
-                <option value={horizon.value}>{horizon.label}</option>
+                <option value={horizon.value}>{horizon.fullLabel}</option>
               {/each}
             </select>
           </div>
+        </div>
+        
+        <div class="analysis-button-container">
+          <button 
+            class="analysis-button"
+            on:click={() => {
+              // Force recalculation
+              timeHorizon = timeHorizon;
+            }}
+          >
+            <svg class="analysis-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Analyze Scenario
+          </button>
         </div>
         
         {#if combinedAnalysis}
@@ -268,7 +305,7 @@
                 </span>
                 if price goes to 
                 <span class="price-highlight">${targetPrice}</span>
-                in {combinedAnalysis.timeHorizonDays} day{combinedAnalysis.timeHorizonDays !== 1 ? 's' : ''}
+                by {combinedAnalysis.timeLabel}
               </span>
             </div>
             <div class="impact-details">
@@ -315,48 +352,73 @@
         {/if}
       </div>
 
-      <!-- Time Decay Analysis -->
-      <div class="analysis-card">
-        <h4 class="card-title">Time Decay Analysis</h4>
-        <div class="input-group">
-          <label for="decay-time-horizon">Time Horizon</label>
-          <select 
-            id="decay-time-horizon"
-            bind:value={timeHorizon}
-            class="time-select"
-          >
-            {#each availableTimeHorizons as horizon}
-              <option value={horizon.value}>{horizon.label}</option>
-            {/each}
-          </select>
+      <!-- Time Decay Analysis - Main Event -->
+      <div class="main-analysis-card">
+        <div class="main-analysis-header">
+          <div class="main-title-section">
+            <div class="main-icon">⏰</div>
+            <h3 class="main-title">Time Decay Analysis</h3>
+          </div>
+          <div class="time-selector-section">
+            <label for="decay-time-horizon" class="main-label">Select Time Horizon</label>
+            <select 
+              id="decay-time-horizon"
+              bind:value={timeHorizon}
+              class="main-time-select"
+            >
+              {#each availableTimeHorizons as horizon}
+                <option value={horizon.value}>{horizon.fullLabel}</option>
+              {/each}
+            </select>
+          </div>
         </div>
         
         {#if timeDecay}
-          <div class="decay-result">
-            <div class="decay-header">
-              <span class="decay-icon">⏰</span>
-              <span class="decay-text">
-                Premiums are expected to 
-                <span class="decay-value negative">decrease {timeDecay.decayPercentage.toFixed(1)}%</span>
-                over the next {timeHorizon} day{timeHorizon !== '1' ? 's' : ''} if price remains at current level
-              </span>
+          <div class="main-decay-result">
+            <div class="main-decay-statement">
+              <div class="statement-icon">📉</div>
+              <div class="statement-content">
+                <div class="statement-text">
+                  Premiums are expected to 
+                  <span class="main-decay-value negative">decrease {timeDecay.decayPercentage.toFixed(1)}%</span>
+                </div>
+                <div class="statement-time">
+                  by {availableTimeHorizons[parseInt(timeHorizon)]?.fullLabel || 'selected time'} if price remains at current level
+                </div>
+              </div>
             </div>
-            <div class="decay-details">
-              <div class="detail-item">
-                <span class="detail-label">Daily Decay:</span>
-                <span class="detail-value">${timeDecay.dailyDecay.toFixed(2)}</span>
+            
+            <div class="main-metrics-grid">
+              <div class="main-metric-card">
+                <div class="metric-icon">💰</div>
+                <div class="metric-content">
+                  <div class="metric-label">Daily Decay</div>
+                  <div class="metric-value">${timeDecay.dailyDecay.toFixed(2)}</div>
+                </div>
               </div>
-              <div class="detail-item">
-                <span class="detail-label">Total Decay:</span>
-                <span class="detail-value">${timeDecay.totalDecay.toFixed(2)}</span>
+              
+              <div class="main-metric-card">
+                <div class="metric-icon">📊</div>
+                <div class="metric-content">
+                  <div class="metric-label">Total Decay</div>
+                  <div class="metric-value">${timeDecay.totalDecay.toFixed(2)}</div>
+                </div>
               </div>
-              <div class="detail-item">
-                <span class="detail-label">Future Premium:</span>
-                <span class="detail-value">${timeDecay.futurePremium.toFixed(2)}</span>
+              
+              <div class="main-metric-card">
+                <div class="metric-icon">🎯</div>
+                <div class="metric-content">
+                  <div class="metric-label">Future Premium</div>
+                  <div class="metric-value">${timeDecay.futurePremium.toFixed(2)}</div>
+                </div>
               </div>
-              <div class="detail-item">
-                <span class="detail-label">Remaining Days:</span>
-                <span class="detail-value">{timeDecay.remainingDays}</span>
+              
+              <div class="main-metric-card">
+                <div class="metric-icon">⏳</div>
+                <div class="metric-content">
+                  <div class="metric-label">Remaining Days</div>
+                  <div class="metric-value">{timeDecay.remainingDays}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -525,6 +587,244 @@
   .time-select option {
     background: #1f2937;
     color: #fff;
+  }
+
+  /* Analysis Button */
+  .analysis-button-container {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+  }
+
+  .analysis-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
+  }
+
+  .analysis-button:hover {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(167, 139, 250, 0.4);
+  }
+
+  .analysis-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(167, 139, 250, 0.3);
+  }
+
+  .analysis-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Main Analysis Card - Time Decay as Main Event */
+  .main-analysis-card {
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.15) 0%, rgba(196, 181, 253, 0.08) 100%);
+    border: 2px solid rgba(167, 139, 250, 0.3);
+    border-radius: 16px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .main-analysis-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #a78bfa, #8b5cf6, #7c3aed);
+  }
+
+  .main-analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .main-title-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .main-icon {
+    font-size: 2rem;
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 4px rgba(167, 139, 250, 0.3));
+  }
+
+  .main-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff, #c4b5fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .time-selector-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 250px;
+  }
+
+  .main-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #c4b5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .main-time-select {
+    background: rgba(17, 24, 39, 0.9);
+    border: 2px solid rgba(167, 139, 250, 0.3);
+    border-radius: 12px;
+    padding: 0.875rem 1rem;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .main-time-select:focus {
+    outline: none;
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.2), 0 6px 16px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .main-time-select option {
+    background: #1f2937;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* Main Decay Result */
+  .main-decay-result {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .main-decay-statement {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .statement-icon {
+    font-size: 3rem;
+    flex-shrink: 0;
+  }
+
+  .statement-content {
+    flex: 1;
+  }
+
+  .statement-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+
+  .main-decay-value {
+    font-size: 2rem;
+    font-weight: 900;
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .main-decay-value.negative {
+    color: #f87171;
+    text-shadow: 0 0 8px rgba(248, 113, 113, 0.3);
+  }
+
+  .statement-time {
+    font-size: 1rem;
+    color: #94a3b8;
+    font-weight: 500;
+  }
+
+  /* Main Metrics Grid */
+  .main-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .main-metric-card {
+    background: rgba(17, 24, 39, 0.8);
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .main-metric-card:hover {
+    border-color: rgba(167, 139, 250, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .metric-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+  }
+
+  .metric-content {
+    flex: 1;
+  }
+
+  .metric-label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+
+  .metric-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fff;
+    font-family: 'Courier New', monospace;
   }
 
 
@@ -743,6 +1043,63 @@
 
     .impact-text, .decay-text, .volatility-text {
       font-size: 0.6875rem;
+    }
+
+    /* Main Analysis Mobile */
+    .main-analysis-card {
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+
+    .main-analysis-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1.5rem;
+    }
+
+    .main-title {
+      font-size: 1.5rem;
+    }
+
+    .main-icon {
+      font-size: 1.75rem;
+    }
+
+    .time-selector-section {
+      min-width: auto;
+    }
+
+    .main-time-select {
+      font-size: 0.875rem;
+      padding: 0.75rem;
+    }
+
+    .main-decay-statement {
+      flex-direction: column;
+      text-align: center;
+      gap: 1rem;
+      padding: 1.5rem;
+    }
+
+    .statement-text {
+      font-size: 1.25rem;
+    }
+
+    .main-decay-value {
+      font-size: 1.75rem;
+    }
+
+    .main-metrics-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .main-metric-card {
+      padding: 1rem;
+    }
+
+    .metric-value {
+      font-size: 1.25rem;
     }
   }
 

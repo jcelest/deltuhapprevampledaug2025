@@ -15,13 +15,6 @@
   let volatilityAdjustment = 0; // percentage change
   let showAdvanced = false;
 
-  // Debug initial state
-  console.log('🔧 OptionAnalysis Initial State:', {
-    targetPrice,
-    timeHorizon,
-    calculationResults: !!calculationResults,
-    inputData: !!inputData
-  });
 
   // Get available time horizons from pricing matrix with proper formatting
   $: availableTimeHorizons = calculationResults?.tableData?.timeHeaders?.map((timeHeader, index) => {
@@ -63,15 +56,6 @@
     entryPrice: entryPrice
   } : null;
 
-  // Debug pricing matrix data
-  $: if (calculationResults) {
-    console.log('🔍 OptionAnalysis Debug:');
-    console.log('📊 calculationResults:', calculationResults);
-    console.log('📋 tableData:', calculationResults.tableData);
-    console.log('⏰ timeHeaders:', calculationResults.tableData?.timeHeaders);
-    console.log('📈 rows:', calculationResults.tableData?.rows);
-    console.log('🎯 inputData:', inputData);
-  }
 
   function getCurrentPremium() {
     if (!calculationResults) return 0;
@@ -115,29 +99,20 @@
 
   // Find premium at specific price and time from pricing matrix
   function getPremiumAtPriceAndTime(targetPrice, timeIndex) {
-    console.log('🔍 getPremiumAtPriceAndTime called:', { targetPrice, timeIndex, targetPriceType: typeof targetPrice });
-    
     if (!analysisData?.tableData) {
-      console.log('❌ No tableData available');
       return null;
     }
     
     const targetPriceNum = parseFloat(targetPrice);
     const timeIndexNum = parseInt(timeIndex);
     
-    console.log('🔢 Parsed values:', { targetPriceNum, timeIndexNum });
-    
-    console.log('📊 Table data:', analysisData.tableData);
-    console.log('📈 Rows available:', analysisData.tableData.rows?.length);
-    
     // Find the closest stock price row
     let closestRow = null;
     let minDiff = Infinity;
     
     if (analysisData.tableData.rows) {
-      analysisData.tableData.rows.forEach((row, index) => {
+      analysisData.tableData.rows.forEach((row) => {
         const diff = Math.abs(row.stockPrice - targetPriceNum);
-        console.log(`Row ${index}: stockPrice=${row.stockPrice}, diff=${diff}`);
         if (diff < minDiff) {
           minDiff = diff;
           closestRow = row;
@@ -145,24 +120,16 @@
       });
     }
     
-    console.log('🎯 Closest row:', closestRow);
-    console.log('📊 Closest row premiums:', closestRow?.premiums);
-    
     if (!closestRow) {
-      console.log('❌ No closest row found');
       return null;
     }
     
     // Find the premium at the specified time index
     if (timeIndexNum < 0 || timeIndexNum >= closestRow.premiums.length) {
-      console.log('❌ Invalid time index:', { timeIndexNum, premiumsLength: closestRow.premiums.length });
       return null;
     }
     
     const premium = getAveragePremium(closestRow.premiums[timeIndexNum]);
-    console.log('💰 Final premium:', premium);
-    console.log('📊 Premium range at this time:', closestRow.premiums[timeIndexNum]);
-    console.log('🎯 Target price:', targetPriceNum, 'Time index:', timeIndexNum);
     return premium;
   }
 
@@ -187,27 +154,16 @@
 
   function calculateTimeDecay() {
     if (!analysisData || !timeHorizon) {
-      console.log('❌ TimeDecay: Missing data', { analysisData, timeHorizon });
       return null;
     }
     
     const currentPremium = analysisData.currentPremium;
     const timeIndex = parseInt(timeHorizon);
     
-    console.log('🕐 TimeDecay Calculation:', {
-      currentPremium,
-      timeIndex,
-      currentPrice: analysisData.currentPrice,
-      tableData: analysisData.tableData
-    });
-    
     // Get premium at current price but at the time horizon
     const futurePremium = getPremiumAtPriceAndTime(analysisData.currentPrice.toString(), timeIndex);
     
-    console.log('🔮 Future Premium:', futurePremium);
-    
     if (!currentPremium || !futurePremium) {
-      console.log('❌ TimeDecay: Missing premiums', { currentPremium, futurePremium });
       return null;
     }
     
@@ -229,39 +185,11 @@
       remainingDays: getDaysToExpiry() - daysDiff
     };
     
-    console.log('✅ TimeDecay Result:', result);
     return result;
   }
 
   function calculateCombinedAnalysis() {
-    console.log('🎯 Combined Analysis Calculation:', {
-      analysisData: !!analysisData,
-      targetPrice,
-      timeHorizon,
-      currentPrice: analysisData?.currentPrice,
-      optionType: analysisData?.optionType,
-      targetPriceType: typeof targetPrice,
-      targetPriceValue: targetPrice,
-      timeHorizonType: typeof timeHorizon,
-      timeHorizonValue: timeHorizon
-    });
-    
     if (!analysisData || !targetPrice || targetPrice === '' || targetPrice === null || targetPrice === undefined || parseFloat(targetPrice) <= 0 || !timeHorizon) {
-      console.log('❌ Combined Analysis: Missing required data', {
-        hasAnalysisData: !!analysisData,
-        targetPrice: targetPrice,
-        timeHorizon: timeHorizon,
-        targetPriceEmpty: targetPrice === '',
-        targetPriceNull: targetPrice === null,
-        targetPriceUndefined: targetPrice === undefined,
-        timeHorizonEmpty: timeHorizon === '',
-        timeHorizonNull: timeHorizon === null,
-        timeHorizonUndefined: timeHorizon === undefined,
-        targetPriceNumber: typeof targetPrice === 'number',
-        targetPriceString: typeof targetPrice === 'string',
-        parsedTargetPrice: parseFloat(targetPrice),
-        isValidTargetPrice: parseFloat(targetPrice) > 0
-      });
       return null;
     }
     
@@ -269,16 +197,7 @@
     const targetPriceNum = parseFloat(targetPrice);
     const targetPremium = getPremiumAtPriceAndTime(targetPriceNum.toString(), timeHorizon);
     
-    console.log('💰 Premium Analysis:', {
-      currentPremium,
-      targetPremium,
-      targetPrice: targetPriceNum,
-      currentPrice: analysisData.currentPrice,
-      targetPriceString: targetPriceNum.toString()
-    });
-    
     if (!currentPremium || !targetPremium) {
-      console.log('❌ Combined Analysis: Missing premiums');
       return null;
     }
     
@@ -295,7 +214,6 @@
       timeLabel: selectedTime?.fullLabel || 'Unknown time'
     };
     
-    console.log('✅ Combined Analysis Result:', result);
     return result;
   }
 
@@ -329,11 +247,7 @@
   // Auto-populate target price when entry price analysis is available
   $: if (entryPriceAnalysis && entryPriceAnalysis.entryPrice) {
     targetPrice = entryPriceAnalysis.entryPrice.toString();
-    console.log('🎯 Auto-populated targetPrice:', targetPrice);
   }
-
-  // Debug targetPrice changes
-  $: console.log('📝 targetPrice changed:', targetPrice, typeof targetPrice);
 </script>
 
 <div class="deltuh-option-analysis">
@@ -464,12 +378,12 @@
                 <span class="detail-label">New Premium:</span>
                 <span class="detail-value">${combinedAnalysis.newPremium.toFixed(2)}</span>
               </div>
-              <div class="detail-item">
-                <span class="detail-label">Price Change:</span>
-                <span class="detail-value {getAnalysisColor(combinedAnalysis.priceChange, true)}">
-                  {combinedAnalysis.priceChange > 0 ? '+' : ''}{combinedAnalysis.priceChange.toFixed(1)}%
-                </span>
-              </div>
+            <div class="detail-item">
+              <span class="detail-label">Stock Price Change:</span>
+              <span class="detail-value {getAnalysisColor(combinedAnalysis.priceChange, true)}">
+                {combinedAnalysis.priceChange > 0 ? '+' : ''}{combinedAnalysis.priceChange.toFixed(1)}%
+              </span>
+            </div>
             </div>
           </div>
         {/if}

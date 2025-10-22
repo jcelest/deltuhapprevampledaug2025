@@ -525,7 +525,7 @@
                     <path d="M18.5 8.5l-5 5-2-2-4 4"/>
                   </svg>
                   <div class="metric-content">
-                    <div class="metric-label">Price Change</div>
+                   <div class="metric-label">Stock Price Change</div>
                     <div class="metric-value {combinedAnalysis.priceChange > 0 ? 'positive' : 'negative'}">
                       {combinedAnalysis.priceChange > 0 ? '+' : ''}{combinedAnalysis.priceChange.toFixed(1)}%
                     </div>
@@ -838,6 +838,9 @@
   /* Toggle Switch */
   .toggle-switch {
     position: relative;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
   }
 
   .toggle-input {
@@ -845,16 +848,17 @@
   }
 
   .toggle-slider {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.75rem;
     cursor: pointer;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.75rem 0.5rem 2.25rem; /* extra left/right so knob never overlaps text */
     background: rgba(17, 24, 39, 0.8);
     border: 2px solid rgba(167, 139, 250, 0.3);
     border-radius: 12px;
     transition: all 0.3s;
     position: relative;
+    white-space: nowrap; /* prevent wrapping over label */
   }
 
   .toggle-slider::before {
@@ -884,7 +888,7 @@
     font-size: 0.875rem;
     font-weight: 600;
     color: #c4b5fd;
-    margin-left: 1.5rem;
+    margin-left: 0.25rem;
   }
 
   /* Entry Price Input */

@@ -13,6 +13,18 @@
   let volatilityAdjustment = 0; // percentage change
   let showAdvanced = false;
 
+  // Get available time horizons from pricing matrix
+  $: availableTimeHorizons = calculationResults?.tableData?.timeHeaders?.map((timeHeader, index) => {
+    const date = new Date(timeHeader);
+    const now = new Date();
+    const daysDiff = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+    return {
+      value: daysDiff.toString(),
+      label: `${daysDiff} day${daysDiff !== 1 ? 's' : ''}`,
+      date: timeHeader
+    };
+  }) || [];
+
   // Analysis data
   $: analysisData = calculationResults ? {
     currentPrice: inputData.stockPrice || 0,
@@ -21,13 +33,7 @@
     expiration: inputData.expiration || '',
     impliedVolatility: inputData.impliedVolatility || 0,
     currentPremium: getCurrentPremium(),
-    greeks: calculationResults.greeks || {
-      delta: inputData.optionType === 'call' ? 0.5 : -0.5,
-      gamma: 0.02,
-      theta: -0.1,
-      vega: 0.2,
-      rho: 0.05
-    }
+    tableData: calculationResults.tableData
   } : null;
 
   function getCurrentPremium() {
@@ -70,73 +76,101 @@
     return Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
   }
 
+  // Find premium at specific price and time from pricing matrix
+  function getPremiumAtPriceAndTime(targetPrice, timeHorizonDays) {
+    if (!analysisData?.tableData) return null;
+    
+    const targetPriceNum = parseFloat(targetPrice);
+    const timeHorizonNum = parseInt(timeHorizonDays);
+    
+    // Find the closest stock price row
+    let closestRow = null;
+    let minDiff = Infinity;
+    
+    analysisData.tableData.rows.forEach(row => {
+      const diff = Math.abs(row.stockPrice - targetPriceNum);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestRow = row;
+      }
+    });
+    
+    if (!closestRow) return null;
+    
+    // Find the premium at the specified time horizon
+    const timeIndex = Math.min(timeHorizonNum - 1, closestRow.premiums.length - 1);
+    if (timeIndex < 0 || timeIndex >= closestRow.premiums.length) return null;
+    
+    return getAveragePremium(closestRow.premiums[timeIndex]);
+  }
+
   function calculatePriceImpact() {
-    if (!analysisData || !targetPrice) return null;
+    if (!analysisData || !targetPrice || !timeHorizon) return null;
     
-    const currentPrice = parseFloat(analysisData.currentPrice);
-    const target = parseFloat(targetPrice);
-    const delta = analysisData.greeks.delta;
     const currentPremium = analysisData.currentPremium;
+    const targetPremium = getPremiumAtPriceAndTime(targetPrice, timeHorizon);
     
-    if (!currentPrice || !target || !currentPremium) return null;
+    if (!currentPremium || !targetPremium) return null;
     
-    const priceChange = (target - currentPrice) / currentPrice;
-    const premiumChange = priceChange * Math.abs(delta) * 100;
-    const newPremium = currentPremium * (1 + premiumChange / 100);
+    const premiumChange = ((targetPremium - currentPremium) / currentPremium) * 100;
+    const priceChange = ((parseFloat(targetPrice) - analysisData.currentPrice) / analysisData.currentPrice) * 100;
     
     return {
-      priceChange: priceChange * 100,
+      priceChange,
       premiumChange,
-      newPremium,
+      newPremium: targetPremium,
       isProfit: premiumChange > 0
     };
   }
 
   function calculateTimeDecay() {
-    if (!analysisData) return null;
+    if (!analysisData || !timeHorizon) return null;
     
-    const theta = analysisData.greeks.theta;
-    const daysToExpiry = getDaysToExpiry();
+    const currentPremium = analysisData.currentPremium;
     const timeHorizonDays = parseInt(timeHorizon);
     
-    if (!theta || !daysToExpiry) return null;
+    // Get premium at current price but at the time horizon
+    const futurePremium = getPremiumAtPriceAndTime(analysisData.currentPrice.toString(), timeHorizonDays);
     
-    const dailyDecay = Math.abs(theta);
-    const totalDecay = dailyDecay * timeHorizonDays;
-    const decayPercentage = (totalDecay / analysisData.currentPremium) * 100;
+    if (!currentPremium || !futurePremium) return null;
+    
+    const totalDecay = currentPremium - futurePremium;
+    const decayPercentage = (totalDecay / currentPremium) * 100;
+    const dailyDecay = totalDecay / timeHorizonDays;
     
     return {
       dailyDecay,
       totalDecay,
       decayPercentage,
-      remainingDays: daysToExpiry - timeHorizonDays
+      futurePremium,
+      remainingDays: getDaysToExpiry() - timeHorizonDays
     };
   }
 
-  function calculateVolatilityImpact() {
-    if (!analysisData) return null;
+  function calculateCombinedAnalysis() {
+    if (!analysisData || !targetPrice || !timeHorizon) return null;
     
-    const vega = analysisData.greeks.vega;
-    const currentIV = analysisData.impliedVolatility;
-    const ivChange = volatilityAdjustment;
+    const currentPremium = analysisData.currentPremium;
+    const targetPremium = getPremiumAtPriceAndTime(targetPrice, timeHorizon);
     
-    if (!vega || !currentIV) return null;
+    if (!currentPremium || !targetPremium) return null;
     
-    const premiumImpact = (ivChange / 100) * vega * 10; // vega is per 1% IV change
-    const newPremium = analysisData.currentPremium * (1 + premiumImpact / 100);
+    const premiumChange = ((targetPremium - currentPremium) / currentPremium) * 100;
+    const priceChange = ((parseFloat(targetPrice) - analysisData.currentPrice) / analysisData.currentPrice) * 100;
     
     return {
-      ivChange,
-      premiumImpact,
-      newPremium,
-      isPositive: premiumImpact > 0
+      priceChange,
+      premiumChange,
+      newPremium: targetPremium,
+      isProfit: premiumChange > 0,
+      timeHorizonDays: parseInt(timeHorizon)
     };
   }
 
   // Reactive calculations
   $: priceImpact = calculatePriceImpact();
   $: timeDecay = calculateTimeDecay();
-  $: volatilityImpact = calculateVolatilityImpact();
+  $: combinedAnalysis = calculateCombinedAnalysis();
 
   function getAnalysisColor(value, isPositive) {
     if (value > 0) return isPositive ? 'positive' : 'negative';
@@ -192,46 +226,60 @@
         </div>
       </div>
 
-      <!-- Price Target Analysis -->
+      <!-- Combined Price & Time Analysis -->
       <div class="analysis-card">
-        <h4 class="card-title">Price Target Analysis</h4>
-        <div class="input-group">
-          <label for="target-price">Target Price ($)</label>
-          <input 
-            id="target-price"
-            type="number" 
-            step="0.01" 
-            bind:value={targetPrice}
-            placeholder="Enter target price"
-            class="price-input"
-          />
+        <h4 class="card-title">Price & Time Analysis</h4>
+        <div class="input-row">
+          <div class="input-group">
+            <label for="target-price">Target Price ($)</label>
+            <input 
+              id="target-price"
+              type="number" 
+              step="0.01" 
+              bind:value={targetPrice}
+              placeholder="Enter target price"
+              class="price-input"
+            />
+          </div>
+          <div class="input-group">
+            <label for="time-horizon">Time Horizon</label>
+            <select 
+              id="time-horizon"
+              bind:value={timeHorizon}
+              class="time-select"
+            >
+              {#each availableTimeHorizons as horizon}
+                <option value={horizon.value}>{horizon.label}</option>
+              {/each}
+            </select>
+          </div>
         </div>
         
-        {#if priceImpact}
-          <div class="impact-result {getAnalysisColor(priceImpact.premiumChange, priceImpact.isProfit)}">
+        {#if combinedAnalysis}
+          <div class="impact-result {getAnalysisColor(combinedAnalysis.premiumChange, combinedAnalysis.isProfit)}">
             <div class="impact-header">
-              <span class="impact-icon {getAnalysisColor(priceImpact.premiumChange, priceImpact.isProfit)}">
-                {getAnalysisIcon(priceImpact.premiumChange, priceImpact.isProfit)}
+              <span class="impact-icon {getAnalysisColor(combinedAnalysis.premiumChange, combinedAnalysis.isProfit)}">
+                {getAnalysisIcon(combinedAnalysis.premiumChange, combinedAnalysis.isProfit)}
               </span>
               <span class="impact-text">
                 Premiums are expected to 
-                <span class="impact-value {getAnalysisColor(priceImpact.premiumChange, priceImpact.isProfit)}">
-                  {priceImpact.premiumChange > 0 ? 'increase' : 'decrease'} {Math.abs(priceImpact.premiumChange).toFixed(1)}%
+                <span class="impact-value {getAnalysisColor(combinedAnalysis.premiumChange, combinedAnalysis.isProfit)}">
+                  {combinedAnalysis.premiumChange > 0 ? 'increase' : 'decrease'} {Math.abs(combinedAnalysis.premiumChange).toFixed(1)}%
                 </span>
                 if price goes to 
                 <span class="price-highlight">${targetPrice}</span>
-                by {formatDate(inputData.expiration)} @ {formatTime(calculationResults.calculationTime)}
+                in {combinedAnalysis.timeHorizonDays} day{combinedAnalysis.timeHorizonDays !== 1 ? 's' : ''}
               </span>
             </div>
             <div class="impact-details">
               <div class="detail-item">
                 <span class="detail-label">New Premium:</span>
-                <span class="detail-value">${priceImpact.newPremium.toFixed(2)}</span>
+                <span class="detail-value">${combinedAnalysis.newPremium.toFixed(2)}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-label">Price Change:</span>
-                <span class="detail-value {getAnalysisColor(priceImpact.priceChange, true)}">
-                  {priceImpact.priceChange > 0 ? '+' : ''}{priceImpact.priceChange.toFixed(1)}%
+                <span class="detail-value {getAnalysisColor(combinedAnalysis.priceChange, true)}">
+                  {combinedAnalysis.priceChange > 0 ? '+' : ''}{combinedAnalysis.priceChange.toFixed(1)}%
                 </span>
               </div>
             </div>
@@ -271,15 +319,16 @@
       <div class="analysis-card">
         <h4 class="card-title">Time Decay Analysis</h4>
         <div class="input-group">
-          <label for="time-horizon">Time Horizon (days)</label>
-          <input 
-            id="time-horizon"
-            type="number" 
-            min="1" 
-            max={getDaysToExpiry()}
+          <label for="decay-time-horizon">Time Horizon</label>
+          <select 
+            id="decay-time-horizon"
             bind:value={timeHorizon}
-            class="time-input"
-          />
+            class="time-select"
+          >
+            {#each availableTimeHorizons as horizon}
+              <option value={horizon.value}>{horizon.label}</option>
+            {/each}
+          </select>
         </div>
         
         {#if timeDecay}
@@ -289,7 +338,7 @@
               <span class="decay-text">
                 Premiums are expected to 
                 <span class="decay-value negative">decrease {timeDecay.decayPercentage.toFixed(1)}%</span>
-                over the next {timeHorizon} days if price remains at current level
+                over the next {timeHorizon} day{timeHorizon !== '1' ? 's' : ''} if price remains at current level
               </span>
             </div>
             <div class="decay-details">
@@ -302,6 +351,10 @@
                 <span class="detail-value">${timeDecay.totalDecay.toFixed(2)}</span>
               </div>
               <div class="detail-item">
+                <span class="detail-label">Future Premium:</span>
+                <span class="detail-value">${timeDecay.futurePremium.toFixed(2)}</span>
+              </div>
+              <div class="detail-item">
                 <span class="detail-label">Remaining Days:</span>
                 <span class="detail-value">{timeDecay.remainingDays}</span>
               </div>
@@ -309,91 +362,6 @@
           </div>
         {/if}
       </div>
-
-      <!-- Volatility Analysis -->
-      <div class="analysis-card">
-        <h4 class="card-title">Volatility Impact</h4>
-        <div class="input-group">
-          <label for="volatility-adjustment">IV Change (%)</label>
-          <input 
-            id="volatility-adjustment"
-            type="range" 
-            min="-50" 
-            max="50" 
-            step="5"
-            bind:value={volatilityAdjustment}
-            class="volatility-slider"
-          />
-          <span class="slider-value">{volatilityAdjustment}%</span>
-        </div>
-        
-        {#if volatilityImpact}
-          <div class="volatility-result">
-            <div class="volatility-header">
-              <span class="volatility-icon">📈</span>
-              <span class="volatility-text">
-                A {volatilityAdjustment}% change in IV would 
-                <span class="volatility-value {getAnalysisColor(volatilityImpact.premiumImpact, volatilityImpact.isPositive)}">
-                  {volatilityImpact.premiumImpact > 0 ? 'increase' : 'decrease'} premiums by {Math.abs(volatilityImpact.premiumImpact).toFixed(1)}%
-                </span>
-              </span>
-            </div>
-            <div class="volatility-details">
-              <div class="detail-item">
-                <span class="detail-label">New Premium:</span>
-                <span class="detail-value">${volatilityImpact.newPremium.toFixed(2)}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Premium Change:</span>
-                <span class="detail-value {getAnalysisColor(volatilityImpact.premiumImpact, volatilityImpact.isPositive)}">
-                  {volatilityImpact.premiumImpact > 0 ? '+' : ''}{volatilityImpact.premiumImpact.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </div>
-        {/if}
-      </div>
-
-      <!-- Advanced Analysis Toggle -->
-      <div class="advanced-toggle">
-        <button 
-          class="toggle-button" 
-          on:click={() => showAdvanced = !showAdvanced}
-        >
-          <span class="toggle-text">Advanced Analysis</span>
-          <span class="toggle-icon">{showAdvanced ? '▲' : '▼'}</span>
-        </button>
-      </div>
-
-      {#if showAdvanced}
-        <div class="advanced-analysis">
-          <div class="analysis-card">
-            <h4 class="card-title">Greeks Breakdown</h4>
-            <div class="greeks-breakdown">
-              <div class="greek-item">
-                <span class="greek-label">Delta (Δ):</span>
-                <span class="greek-value">{analysisData.greeks.delta.toFixed(3)}</span>
-                <span class="greek-desc">Price sensitivity</span>
-              </div>
-              <div class="greek-item">
-                <span class="greek-label">Gamma (Γ):</span>
-                <span class="greek-value">{analysisData.greeks.gamma.toFixed(3)}</span>
-                <span class="greek-desc">Delta change rate</span>
-              </div>
-              <div class="greek-item">
-                <span class="greek-label">Theta (Θ):</span>
-                <span class="greek-value">{analysisData.greeks.theta.toFixed(3)}</span>
-                <span class="greek-desc">Time decay</span>
-              </div>
-              <div class="greek-item">
-                <span class="greek-label">Vega (ν):</span>
-                <span class="greek-value">{analysisData.greeks.vega.toFixed(3)}</span>
-                <span class="greek-desc">Volatility sensitivity</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      {/if}
 
     {:else}
       <div class="empty-state">
@@ -525,7 +493,15 @@
     letter-spacing: 0.05em;
   }
 
-  .price-input, .time-input {
+  /* Input Row Layout */
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .price-input, .time-input, .time-select {
     background: rgba(17, 24, 39, 0.8);
     border: 1px solid rgba(167, 139, 250, 0.2);
     border-radius: 8px;
@@ -533,39 +509,24 @@
     color: #fff;
     font-size: 0.875rem;
     transition: all 0.3s;
+    width: 100%;
   }
 
-  .price-input:focus, .time-input:focus {
+  .time-select {
+    cursor: pointer;
+  }
+
+  .price-input:focus, .time-input:focus, .time-select:focus {
     outline: none;
     border-color: #a78bfa;
     box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
   }
 
-  .volatility-slider {
-    width: 100%;
-    height: 6px;
-    background: rgba(167, 139, 250, 0.2);
-    border-radius: 3px;
-    outline: none;
-    -webkit-appearance: none;
+  .time-select option {
+    background: #1f2937;
+    color: #fff;
   }
 
-  .volatility-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    background: #a78bfa;
-    border-radius: 50%;
-    cursor: pointer;
-  }
-
-  .slider-value {
-    font-size: 0.75rem;
-    color: #c4b5fd;
-    font-weight: 600;
-    text-align: center;
-    margin-top: 0.25rem;
-  }
 
   /* Scenario Content */
   .scenario-content {
@@ -724,73 +685,6 @@
     font-family: 'Courier New', monospace;
   }
 
-  /* Advanced Toggle */
-  .advanced-toggle {
-    margin-top: 0.5rem;
-  }
-
-  .toggle-button {
-    width: 100%;
-    background: rgba(167, 139, 250, 0.1);
-    border: 1px solid rgba(167, 139, 250, 0.2);
-    border-radius: 8px;
-    padding: 0.5rem 0.75rem;
-    color: #c4b5fd;
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .toggle-button:hover {
-    background: rgba(167, 139, 250, 0.15);
-    border-color: rgba(167, 139, 250, 0.3);
-  }
-
-  .toggle-icon {
-    font-size: 0.75rem;
-  }
-
-  /* Advanced Analysis */
-  .advanced-analysis {
-    margin-top: 0.75rem;
-  }
-
-  .greeks-breakdown {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-  }
-
-  .greek-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.5rem;
-    background: rgba(17, 24, 39, 0.4);
-    border-radius: 6px;
-  }
-
-  .greek-label {
-    font-size: 0.6875rem;
-    color: #94a3b8;
-    font-weight: 500;
-  }
-
-  .greek-value {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #fff;
-    font-family: 'Courier New', monospace;
-  }
-
-  .greek-desc {
-    font-size: 0.625rem;
-    color: #64748b;
-  }
 
   /* Empty State */
   .empty-state {
@@ -832,13 +726,14 @@
       padding: 0.875rem;
     }
 
-    .impact-details, .decay-details, .volatility-details {
+    .input-row {
       grid-template-columns: 1fr;
       gap: 0.75rem;
     }
 
-    .greeks-breakdown {
+    .impact-details, .decay-details, .volatility-details {
       grid-template-columns: 1fr;
+      gap: 0.75rem;
     }
 
     .impact-header, .decay-header, .volatility-header {
